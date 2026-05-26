@@ -1,0 +1,66 @@
+% !TeX root = ../main.tex
+\section{Evaluation Protocol}
+\label{sec:evaluation}
+
+\subsection{Compared Models}
+\label{subsec:compared_models}
+
+We compare five model classes. The uncalibrated aerodynamic model reports the raw
+model error before fitting the calibration parameters. The calibrated
+aerodynamic model shows how far the bounded physical calibration can reduce that
+error. The direct Transformer predicts the full effective wrench with no explicit
+aerodynamic-model term. The calibrated model plus residual MLP tests whether
+instantaneous onboard variables can explain the remaining force and moment
+residuals. The channel-aware hybrid Transformer tests whether causal history
+improves residual correction while using calibrated-model residual correction for
+forces and direct neural prediction for moments.
+
+Together, the models separate the effects of physical calibration, residual
+learning, temporal history, and channel-specific output semantics. The direct
+Transformer serves as a black-box full-wrench reference. The residual models show
+how much accuracy is retained when the calibrated aerodynamic model remains
+explicit, and the channel-aware model tests whether force and moment channels
+benefit from different prediction semantics.
+
+\subsection{Train/Validation/Test and Cross-Validation}
+\label{subsec:split_protocol}
+
+The primary experiment uses the fixed whole-log split described in Sec.~\ref{subsec:canonical_samples}. The aerodynamic-model calibration uses training logs only. Neural models are trained on training logs, selected using validation logs, and evaluated on held-out test logs. Normalization statistics, calibration parameters, and early-stopping decisions are not fitted on test logs.
+
+To check whether the result depends on one particular test composition, we also run five-fold whole-log cross-validation with approximately date-stratified and sample-balanced folds. Date stratification is used to make the evaluation less sensitive to date-specific variations in weather, wind condition, and airframe condition, and to better assess generalization across flight dates. In fold $k$, log fold $k$ is used for testing, log fold $(k+1) \bmod 5$ is used for validation, and the remaining folds are used for training. The channel-aware hybrid Transformer configuration is fixed across folds. The stratification is approximate because the number of available logs differs across flight dates.
+
+\subsection{Metrics}
+\label{subsec:metrics}
+
+The primary metrics are per-target root-mean-square error (RMSE) and mean absolute error (MAE):
+\begin{equation}
+  \mathrm{RMSE}_{j}
+  =
+  \sqrt{
+    \frac{1}{N}
+    \sum_{n=1}^{N}
+    \left(
+      \hat{y}_{n,j} - y_{n,j}
+    \right)^2
+  },
+  \label{eq:rmse}
+\end{equation}
+\begin{equation}
+  \mathrm{MAE}_{j}
+  =
+  \frac{1}{N}
+  \sum_{n=1}^{N}
+  \left|
+    \hat{y}_{n,j} - y_{n,j}
+  \right|.
+  \label{eq:mae}
+\end{equation}
+Aggregate RMSE and MAE are reported as compact summaries, but per-target values are the main evidence because the six wrench channels have different units, amplitudes, excitation levels, and label quality.
+
+To give the absolute errors a scale reference, we also report the held-out
+standard deviation $\sigma_{y,j}$ of each target channel and the normalized
+error $\mathrm{RMSE}_j/\sigma_{y,j}$. We report $R^2$ as a secondary metric.
+Because the six channels have different scales and excitation levels, $R^2$ is
+interpreted together with RMSE, MAE, and $\mathrm{RMSE}/\sigma_y$. This is
+especially important for moment channels, where the label variance is much
+smaller than in the force channels.

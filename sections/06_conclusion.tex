@@ -1,0 +1,11 @@
+% !TeX root = ../main.tex
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper presented a real-flight effective-wrench residual modeling pipeline for a bird-scale flapping-wing vehicle. A DeLaurier-style aerodynamic model was used as a simulator prior, physically calibrated using training logs, and then compared with six-component effective wrench labels derived from outdoor flight logs.
+
+The main finding is that a calibrated flapping-wing aerodynamic prior leaves a stable and interpretable real-flight residual, and this residual can be learned causally from onboard measurements. On held-out logs and date-stratified whole-log cross-validation, the residual Transformer substantially reduced the calibrated prior error while preserving the simulator prior as an explicit model component.
+
+Residual analysis showed that the remaining prior mismatch is not arbitrary. The main force-channel residuals contain wingbeat-phase, frequency, and flight-condition structure, and the neural residual removes most of these repeatable components. This supports theory-guided neural residual modeling as a practical path from a physics-based flapping-wing simulator toward a real-flight-corrected simulator model.
+
+Future work will embed the hybrid residual model into IsaacLab for short-horizon trajectory replay and closed-loop controller evaluation. Further flight data should cover broader angle-of-attack, flapping-frequency, sideslip, and wind conditions, and uncertainty estimation should be added to prevent overconfident residual prediction outside the observed flight envelope.

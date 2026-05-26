@@ -1,0 +1,31 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+
+# Generated PDFs from local compilation
+main.pdf
+Example_2026.pdf
+
+# Template scratch outputs
+Example_2026.aux
+Example_2026.bbl
+Example_2026.blg
+Example_2026.fdb_latexmk
+Example_2026.fls
+Example_2026.log
+Example_2026.out
+Example_2026.toc
+
+# Local agent metadata
+.agents/
+.codex/
+
+# Local literature dump, not needed for compilation
+related_papers/

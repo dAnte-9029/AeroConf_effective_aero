@@ -1,0 +1,137 @@
+% !TeX root = ../main.tex
+\section{Theory-Guided Neural Residual Model}
+\label{sec:method}
+
+\subsection{Physics-Based Aerodynamic Model and Calibration}
+\label{subsec:delaurier_calibration}
+
+A physics-based aerodynamic model based on DeLaurier's flapping-wing formulation~\cite{delaurier1993} provides the structured part of the wrench prediction. The model is implemented in IsaacLab and produces the same six-component body-frame force and moment vector as the effective-wrench target in Eq.~\eqref{eq:wrench_vector}. It uses the wing motion, local airdata, body rates, and tail and fuselage terms required by the aerodynamic calculation.
+
+The model is useful because it maps vehicle geometry, wing motion, and flight condition to a physically organized wrench estimate. The formulation relies on strip-theory and quasi-steady assumptions, approximate geometry and aerodynamic parameters, and simplified treatments of wing flexibility, unsteady loading, and tail/body aerodynamics. These approximations make the model incomplete for outdoor free flight. We therefore use the calibrated aerodynamic model as the baseline physical prediction and train a neural residual estimator for the remaining discrepancy.
+
+Before residual training, the aerodynamic model is calibrated using training logs only. The calibration is low-dimensional and bounded: it adjusts only the parameters listed below, while leaving the aerodynamic structure fixed. The optimized parameter vector is
+\begin{equation}
+\boldsymbol{\psi}
+=
+(s_N,\;s_C,\;\theta_w,\;\eta_{\max},\;e_i,\;C_{D,A},\;s_T,\;\Delta t_{\phi}).
+\label{eq:prior_params}
+\end{equation}
+Here $s_N$, $s_C$, and $s_T$ scale wing normal force, wing chordwise force, and tail lift; $\theta_w$ and $\eta_{\max}$ set wing incidence and twist; $e_i$ and $C_{D,A}$ parameterize induced drag and fuselage drag; and $\Delta t_{\phi}$ is the phase delay. After calibration, $\boldsymbol{\psi}$ is fixed and the calibrated model provides the baseline prediction used to define the residual target.
+
+The calibration objective minimizes a weighted discrepancy between the log-derived effective wrench and the physics-based model. With
+\begin{equation}
+  \mathbf{d}_t(\boldsymbol{\psi})
+  =
+  \mathbf{W}
+  \left[
+    \mathbf{y}_t-\mathbf{y}^{D}_t(\boldsymbol{\psi})
+  \right],
+  \label{eq:prior_calibration_residual}
+\end{equation}
+the calibrated parameters are obtained from
+\begin{equation}
+  \begin{aligned}
+  \boldsymbol{\psi}^{\star}
+  &=
+  \arg\min_{\boldsymbol{\psi}\in\Psi}
+  \mathcal{J}(\boldsymbol{\psi}),\\
+  \mathcal{J}(\boldsymbol{\psi})
+  &=
+  \frac{1}{|\mathcal{D}_{\mathrm{train}}|}
+  \sum_{t\in\mathcal{D}_{\mathrm{train}}}
+  \rho_{\delta}\!\left(\mathbf{d}_t(\boldsymbol{\psi})\right)
+  +
+  \lambda\|\boldsymbol{\psi}-\boldsymbol{\psi}_0\|_2^2 .
+  \end{aligned}
+  \label{eq:prior_calibration_objective}
+\end{equation}
+where $\Psi$ is the bounded physically plausible search region, $\mathbf{W}$ balances the six wrench channels, $\rho_{\delta}(\cdot)$ is an elementwise Huber loss, and the weak regularization term penalizes large deviations from the nominal parameters. This objective can remove systematic scale, offset, efficiency, and phase mismatch, but it does not allow the calibrated model to fit arbitrary sample-level errors.
+
+\subsection{Channel-Aware Residual Learning and Causal Transformer}
+\label{subsec:residual_learning}
+
+The calibrated aerodynamic model is most useful for the force channels, where the
+dominant wing and tail loads are represented explicitly. For the moment channels,
+the same model is more sensitive to center-of-gravity location, moment arms, tail
+modeling, and small label variance. The final hybrid model therefore uses a
+channel-aware output definition. Let
+$\mathcal{F}=\{f_{x,b},f_{y,b},f_{z,b}\}$ and
+$\mathcal{M}=\{m_{x,b},m_{y,b},m_{z,b}\}$. The force prediction is
+\begin{equation}
+  \hat{\mathbf{y}}_{t,\mathcal{F}}
+  =
+  \mathbf{y}^{D}_{t,\mathcal{F}}(\mathbf{z}_t;\boldsymbol{\psi}^{\star})
+  +
+  \hat{\mathbf{r}}_{\theta,t,\mathcal{F}},
+  \label{eq:hybrid_force}
+\end{equation}
+and the moment prediction is
+\begin{equation}
+  \hat{\mathbf{y}}_{t,\mathcal{M}}
+  =
+  \hat{\mathbf{m}}_{\theta,t}.
+  \label{eq:hybrid_moment}
+\end{equation}
+Here $\mathbf{z}_t$ denotes the aerodynamic-model inputs at time $t$,
+$\mathbf{y}^{D}_{t,\mathcal{F}}$ is the calibrated force prediction,
+$\hat{\mathbf{r}}_{\theta,t,\mathcal{F}}$ is the neural force residual, and
+$\hat{\mathbf{m}}_{\theta,t}$ is the direct neural moment prediction. The force
+residual target is
+\begin{equation}
+  \mathbf{r}_{t,\mathcal{F}}
+  =
+  \mathbf{y}_{t,\mathcal{F}}
+  -
+  \mathbf{y}^{D}_{t,\mathcal{F}} .
+  \label{eq:force_residual_target}
+\end{equation}
+
+The force residual is a combined discrepancy between the calibrated aerodynamic
+model and the real-flight effective wrench. It can arise from wing flexibility,
+unsteady loading, remaining parameter mismatch, actuator timing, tail/body
+aerodynamic mismatch, outdoor disturbances, and wrench-label reconstruction
+error. The neural model therefore learns a correction to the calibrated force
+prediction, while the moment head learns the moment components directly.
+Further analysis identifies which parts of the force correction are repeatable
+with phase, frequency, or flight condition.
+
+A memoryless MLP is the simplest neural correction, but flapping-wing loads depend strongly on recent wing motion, actuator response, and vehicle motion. We therefore use causal temporal models that predict the correction outputs at time $t$ from current and historical onboard-measurable variables. Among the tested recurrent, convolutional, and attention-based backbones, the Transformer gave the best validation accuracy and is used as the main estimator:
+\begin{equation}
+  \left[
+  \hat{\mathbf{r}}_{\theta,t,\mathcal{F}},
+  \hat{\mathbf{m}}_{\theta,t}
+  \right]
+  =
+  f_{\theta}
+  \left(
+    \mathbf{s}_{t-H+1:t},
+    \mathbf{c}_{t}
+  \right),
+  \label{eq:residual_causal_model}
+\end{equation}
+where $\mathbf{s}_{t-H+1:t}$ is a causal history window and $\mathbf{c}_t$ contains current-time features. Consistent with the input organization in Sec.~\ref{subsec:canonical_samples}, the history contains phase, flapping, actuation, and airdata variables, while the current features contain state and air-relative quantities. Acceleration channels and past wrench targets are excluded, so the estimator uses only variables that are measurable onboard before the target wrench is reconstructed.
+
+\subsection{Residual Signals for Analysis}
+\label{subsec:residual_structure_methods}
+
+For the force channels, the residual formulation also defines the quantities used
+for post-training analysis:
+\begin{equation}
+  \begin{aligned}
+  \mathbf{r}_{t,\mathcal{F}}
+  &=
+  \mathbf{y}_{t,\mathcal{F}} - \mathbf{y}^{D}_{t,\mathcal{F}},\\
+  \mathbf{e}_{t,\mathcal{F}}
+  &=
+  \mathbf{y}_{t,\mathcal{F}}
+  - \mathbf{y}^{D}_{t,\mathcal{F}}
+  - \hat{\mathbf{r}}_{\theta,t,\mathcal{F}} .
+  \end{aligned}
+  \label{eq:residual_triplet}
+\end{equation}
+Here $\mathbf{r}_{t,\mathcal{F}}$ is the force residual left by the calibrated
+aerodynamic model, $\hat{\mathbf{r}}_{\theta,t,\mathcal{F}}$ is the neural
+force-residual prediction, and $\mathbf{e}_{t,\mathcal{F}}$ is the remaining force residual
+after correction. These three signals are later compared across wingbeat phase,
+flight condition, and frequency band to determine whether the force residual
+contains repeatable structure.
