@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="476.808937pt" height="162.324pt" viewBox="0 0 476.808937 162.324" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-06-02T16:42:06.406053</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.8.0, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 162.324 
+L 476.808937 162.324 
+L 476.808937 0 
+L 0 0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 37.019663 115.13286 
+L 79.399763 115.13286 
+Q 93.754313 115.13286 93.754313 109.60272 
+L 93.754313 27.44064 
+Q 93.754313 21.9105 79.399763 21.9105 
+L 37.019663 21.9105 
+Q 22.665113 21.9105 22.665113 27.44064 
+L 22.665113 109.60272 
+Q 22.665113 115.13286 37.019663 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #d7ecff; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 91.241465 68.52168 
+Q 91.292801 68.52168 90.226103 68.52168 
+" clip-path="url(#p7d61b674d1)" style="fill: none; stroke: #243447; stroke-linecap: round"/>
+    <path d="M 86.226103 66.52168 
+L 90.226103 68.52168 
+L 86.226103 70.52168 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #243447; stroke: #243447; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 103.187303 115.13286 
+L 145.567403 115.13286 
+Q 159.921953 115.13286 159.921953 109.60272 
+L 159.921953 27.44064 
+Q 159.921953 21.9105 145.567403 21.9105 
+L 103.187303 21.9105 
+Q 88.832753 21.9105 88.832753 27.44064 
+L 88.832753 109.60272 
+Q 88.832753 115.13286 103.187303 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #e7f3df; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 157.409105 68.52168 
+Q 157.460441 68.52168 156.393743 68.52168 
+" clip-path="url(#p7d61b674d1)" style="fill: none; stroke: #243447; stroke-linecap: round"/>
+    <path d="M 152.393743 66.52168 
+L 156.393743 68.52168 
+L 152.393743 70.52168 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #243447; stroke: #243447; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 169.354943 115.13286 
+L 211.735043 115.13286 
+Q 226.089593 115.13286 226.089593 109.60272 
+L 226.089593 27.44064 
+Q 226.089593 21.9105 211.735043 21.9105 
+L 169.354943 21.9105 
+Q 155.000393 21.9105 155.000393 27.44064 
+L 155.000393 109.60272 
+Q 155.000393 115.13286 169.354943 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #fff1c7; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 223.576745 68.52168 
+Q 223.628081 68.52168 222.561383 68.52168 
+" clip-path="url(#p7d61b674d1)" style="fill: none; stroke: #243447; stroke-linecap: round"/>
+    <path d="M 218.561383 66.52168 
+L 222.561383 68.52168 
+L 218.561383 70.52168 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #243447; stroke: #243447; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 235.522583 115.13286 
+L 277.902683 115.13286 
+Q 292.257233 115.13286 292.257233 109.60272 
+L 292.257233 27.44064 
+Q 292.257233 21.9105 277.902683 21.9105 
+L 235.522583 21.9105 
+Q 221.168033 21.9105 221.168033 27.44064 
+L 221.168033 109.60272 
+Q 221.168033 115.13286 235.522583 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #eadff5; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_9">
+    <path d="M 289.744385 68.52168 
+Q 289.795721 68.52168 288.729023 68.52168 
+" clip-path="url(#p7d61b674d1)" style="fill: none; stroke: #243447; stroke-linecap: round"/>
+    <path d="M 284.729023 66.52168 
+L 288.729023 68.52168 
+L 284.729023 70.52168 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #243447; stroke: #243447; stroke-linecap: round"/>
+   </g>
+   <g id="patch_10">
+    <path d="M 301.690223 115.13286 
+L 344.070323 115.13286 
+Q 358.424873 115.13286 358.424873 109.60272 
+L 358.424873 27.44064 
+Q 358.424873 21.9105 344.070323 21.9105 
+L 301.690223 21.9105 
+Q 287.335673 21.9105 287.335673 27.44064 
+L 287.335673 109.60272 
+Q 287.335673 115.13286 301.690223 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #f8dfdc; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_11">
+    <path d="M 355.912025 68.52168 
+Q 355.963361 68.52168 354.896663 68.52168 
+" clip-path="url(#p7d61b674d1)" style="fill: none; stroke: #243447; stroke-linecap: round"/>
+    <path d="M 350.896663 66.52168 
+L 354.896663 68.52168 
+L 350.896663 70.52168 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #243447; stroke: #243447; stroke-linecap: round"/>
+   </g>
+   <g id="patch_12">
+    <path d="M 367.857863 115.13286 
+L 410.237963 115.13286 
+Q 424.592513 115.13286 424.592513 109.60272 
+L 424.592513 27.44064 
+Q 424.592513 21.9105 410.237963 21.9105 
+L 367.857863 21.9105 
+Q 353.503313 21.9105 353.503313 27.44064 
+L 353.503313 109.60272 
+Q 353.503313 115.13286 367.857863 115.13286 
+z
+" clip-path="url(#p7d61b674d1)" style="fill: #e7e7e7; stroke: #243447; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(22.754197 56.095856)">Outdoor Flight</text>
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(37.200853 64.812964)">Platform</text>
+   </g>
+   <g id="text_2">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(61.627463 102.129337)">PX4 logs</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(61.627463 110.518891)">state estimates</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(61.627463 118.908444)">airdata</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(61.627463 127.297997)">actuator commands</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(61.627463 135.68755)">flap phase/frequency</text>
+   </g>
+   <g id="text_3">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="124.377353" y="56.095856" transform="rotate(-0 124.377353 56.095856)">Preprocessing</text>
+   </g>
+   <g id="text_4">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(127.795103 102.129337)">whole-log split</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(127.795103 110.518891)">resampling</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(127.795103 118.908444)">time alignment</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(127.795103 127.297997)">smoothing</text>
+   </g>
+   <g id="text_5">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(149.185039 56.095856)">Effective-Wrench</text>
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(174.875524 64.745777)">Labels</text>
+   </g>
+   <g id="text_6">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(193.962743 102.129337)">measured mass</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(193.962743 110.518891)">measured CG</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(193.962743 118.908444)">measured inertia</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(193.962743 127.297997)">force/moment reconstruction</text>
+   </g>
+   <g id="text_7">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(218.761773 56.095856)">DeLaurier-Style</text>
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(244.891664 64.812964)">Prior</text>
+   </g>
+   <g id="text_8">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(260.130382 102.129337)">fast low-dimensional prior</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(260.130382 110.518891)">bounded force calibration</text>
+   </g>
+   <g id="text_9">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(296.766507 56.095856)">Structured</text>
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(297.519007 64.745777)">Correction</text>
+   </g>
+   <g id="text_10">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(326.298023 102.129337)">phase terms</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(326.298023 110.518891)">airspeed/AoA/frequency</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(326.298023 118.908444)">controls and body rates</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(326.298023 127.297997)">deployable inputs only</text>
+   </g>
+   <g id="text_11">
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(360.812366 56.095856)">Diagnostics</text>
+    <text style="fill: #17212b; font: 700 8.6px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(369.542709 64.812964)">and Use</text>
+   </g>
+   <g id="text_12">
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(392.465663 102.129337)">corrected wrench map</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(392.465663 110.518891)">residual structure</text>
+    <text style="fill: #17212b; font: 6.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif" transform="translate(392.465663 118.908444)">replay diagnostic only</text>
+   </g>
+   <g id="text_13">
+    <g id="patch_13">
+     <path d="M 2.16 139.027789 
+L 445.097625 139.027789 
+Q 447.047625 139.027789 447.047625 137.077789 
+L 447.047625 129.528851 
+Q 447.047625 127.578851 445.097625 127.578851 
+L 2.16 127.578851 
+Q 0.21 127.578851 0.21 129.528851 
+L 0.21 137.077789 
+Q 0.21 139.027789 2.16 139.027789 
+z
+" style="fill: #ffffff; stroke: #8a8a8a; stroke-width: 0.8; stroke-linejoin: miter"/>
+    </g>
+    <text style="fill: #17212b; font: 7.8px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle" x="223.628813" y="135.455632" transform="rotate(-0 223.628813 135.455632)">Validated here: log-conditioned effective-wrench prediction.    Not claimed here: closed-loop simulator validation.</text>
+   </g>
+   <g id="text_14">
+    <text style="fill: #17212b; font: 700 9px 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start" x="28.817063" y="11.718461" transform="rotate(-0 28.817063 11.718461)">Real-flight data pathway for correcting a low-dimensional flapping-wing simulator prior</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p7d61b674d1">
+   <rect x="18.563813" y="2.16" width="410.13" height="158.004"/>
+  </clipPath>
+ </defs>
+</svg>

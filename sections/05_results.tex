@@ -2,152 +2,160 @@
 \section{Results and Discussion}
 \label{sec:results}
 
-\subsection{Calibration and Residual Prediction Performance}
-\label{subsec:prediction_performance}
-
-Physical calibration makes the aerodynamic model more consistent with the real
-vehicle. On the held-out test split, force RMSE decreases from $6.64$ to
-$5.42~\mathrm{N}$ for $f_{x,b}$, from $6.11$ to $3.52~\mathrm{N}$ for
-$f_{y,b}$, and from $18.43$ to $13.10~\mathrm{N}$ for $f_{z,b}$. Moment RMSE
-also decreases, from $0.152$ to $0.071~\mathrm{N\,m}$ for $m_{x,b}$, from
-$1.285$ to $0.602~\mathrm{N\,m}$ for $m_{y,b}$, and from $0.211$ to
-$0.102~\mathrm{N\,m}$ for $m_{z,b}$. This confirms that the calibrated
-aerodynamic model is meaningful, while also showing that a large real-flight
-residual remains.
-
-Table~\ref{tab:residual_overall_results} compares the calibrated aerodynamic
-model, direct black-box prediction, and neural corrections. The calibrated model
-has an overall RMSE of $5.965$ on the sequence-aligned held-out rows. Adding a
-residual MLP reduces RMSE to $2.481$, showing that instantaneous variables
-explain a substantial part of the residual. The channel-aware hybrid Transformer
-further reduces RMSE to $0.870$ and MAE to $0.443$, while using residual
-correction for forces and direct prediction for moments. The direct Transformer
-reaches a similar RMSE of $0.888$. These results show that the hybrid
-formulation keeps black-box-level predictive accuracy while retaining an explicit
-calibrated aerodynamic model for the force residual analysis below.
-
-\begin{table}[t]
-\centering
-\caption{Held-out test comparison. Values are computed on each model's aligned test rows.}
-\label{tab:residual_overall_results}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}lccc@{}}
-\toprule
-Method & Rows & RMSE & MAE \\
-\midrule
-Calibrated aerodynamic model & 58639 & 5.965 & 2.961 \\
-Direct Transformer & 58639 & 0.888 & 0.455 \\
-Calibrated model + residual MLP & 60671 & 2.481 & 1.286 \\
-Channel-aware hybrid Transformer & 58639 & \textbf{0.870} & \textbf{0.443} \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
-
-Target-wise results in Table~\ref{tab:residual_target_results} show that the
-largest absolute improvements occur in the main force channels. For $f_{x,b}$,
-RMSE decreases from $5.416$ to $0.780~\mathrm{N}$; for $f_{z,b}$, it decreases
-from $13.091$ to $1.581~\mathrm{N}$. The side-force channel remains the hardest
-force component, with $\mathrm{RMSE}/\sigma_y=0.828$, but still improves from
-$3.521$ to $1.196~\mathrm{N}$. For the
-moment channels, direct neural prediction is more appropriate than residual
-correction to the calibrated moment output. The channel-aware model reduces
-moment RMSE to $0.0021$, $0.0012$, and $0.00033~\mathrm{N\,m}$ for
-$m_{x,b}$, $m_{y,b}$, and $m_{z,b}$, respectively, with positive $R^2$ in all
-three channels.
-
-\begin{table}[t]
-\centering
-\caption{Target-wise held-out test metrics for the calibrated aerodynamic model and channel-aware hybrid Transformer. $\sigma_y$ is the standard deviation of the held-out target channel. For force channels, the hybrid model uses calibrated-model residual correction; for moment channels, it uses direct prediction.}
-\label{tab:residual_target_results}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}lcccccc@{}}
-\toprule
-Target & $\sigma_y$ & Model RMSE & Hybrid RMSE & RMSE/$\sigma_y$ & Hybrid MAE & Hybrid $R^2$ \\
-\midrule
-$f_{x,b}$ & 4.826 & 5.416 & 0.780 & 0.162 & 0.592 & 0.974 \\
-$f_{y,b}$ & 1.445 & 3.521 & 1.196 & 0.828 & 0.866 & 0.315 \\
-$f_{z,b}$ & 9.294 & 13.091 & 1.581 & 0.170 & 1.197 & 0.971 \\
-$m_{x,b}$ & 0.00332 & 0.0716 & 0.00210 & 0.633 & 0.00152 & 0.599 \\
-$m_{y,b}$ & 0.00432 & 0.5997 & 0.00123 & 0.285 & 0.00094 & 0.919 \\
-$m_{z,b}$ & 0.000510 & 0.1018 & 0.000327 & 0.642 & 0.000250 & 0.588 \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
-
-\subsection{Cross-Log Generalization}
-\label{subsec:kfold_results}
-
-The five-fold whole-log evaluation checks whether the channel-aware hybrid
-model is stable across different held-out log compositions. Across folds, the
-calibrated aerodynamic model has overall RMSE $5.883\pm0.040$ and MAE
-$2.918\pm0.016$, while the hybrid model reduces these values to
-$0.865\pm0.027$ and $0.443\pm0.014$. The force-channel RMSE is
-$1.223\pm0.038~\mathrm{N}$, and the moment-channel RMSE is
-$0.00131\pm0.00007~\mathrm{N\,m}$. The low fold-to-fold variability shows that
-the calibrated model leaves a stable force residual and that the causal hybrid
-model transfers across held-out log composition.
-
-\begin{table}[t]
-\centering
-\caption{Date-stratified five-fold whole-log evaluation for the channel-aware hybrid Transformer. Values are mean $\pm$ standard deviation over folds.}
-\label{tab:kfold_results}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Target & Model RMSE & Hybrid RMSE & Hybrid MAE & Hybrid $R^2$ \\
-\midrule
-Overall & $5.883{\pm}0.040$ & $\mathbf{0.865{\pm}0.027}$ & $\mathbf{0.443{\pm}0.014}$ & -- \\
-$f_{x,b}$ & $5.379{\pm}0.091$ & $0.811{\pm}0.043$ & $0.617{\pm}0.031$ & $0.971{\pm}0.003$ \\
-$f_{y,b}$ & $3.443{\pm}0.062$ & $1.049{\pm}0.041$ & $0.784{\pm}0.029$ & $0.406{\pm}0.043$ \\
-$f_{z,b}$ & $12.904{\pm}0.099$ & $1.652{\pm}0.055$ & $1.255{\pm}0.043$ & $0.967{\pm}0.002$ \\
-$m_{x,b}$ & $0.0658{\pm}0.0029$ & $0.00191{\pm}0.00013$ & $0.00142{\pm}0.00009$ & $0.626{\pm}0.084$ \\
-$m_{y,b}$ & $0.5907{\pm}0.0233$ & $0.00118{\pm}0.00004$ & $0.00090{\pm}0.00003$ & $0.924{\pm}0.006$ \\
-$m_{z,b}$ & $0.1020{\pm}0.0022$ & $0.000318{\pm}0.000019$ & $0.000242{\pm}0.000014$ & $0.546{\pm}0.054$ \\
-\bottomrule
-\end{tabular}%
-}
-\end{table}
-
-\subsection{Residual Structure Analysis}
+\subsection{Structured Residuals Left by the Aligned Prior}
 \label{subsec:residual_structure_results}
 
-The residual diagnostics answer whether the calibrated force-model mismatch is
-random or structured. Fig.~\ref{fig:residual_structure} summarizes the three
-most informative views: wingbeat-phase medians, condition-binned residual RMSE,
-and frequency-band energy. In each case, the comparison is between the force
-residual $\mathbf{r}_{t,\mathcal{F}}$, the neural prediction
-$\hat{\mathbf{r}}_{\theta,t,\mathcal{F}}$, and the remaining force residual
-$\mathbf{e}_{t,\mathcal{F}}$ after correction.
+The first question is whether the affine-aligned DeLaurier-style prior leaves a residual that is worth correcting with data. Figures~\ref{fig:phase_residual_measured}--\ref{fig:frequency_residual_measured} show three diagnostic views used in this paper: wingbeat-phase medians, condition-binned RMSE, and frequency-band energy. In each view, the aligned-prior residual is compared with the fitted correction and the remaining residual after correction. This order makes the correction a response to observed simulator-to-flight structure rather than an unrestricted replacement of the prior.
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=\textwidth]{figures/residual_structure_summary.pdf}
-  \caption{Force residual structure before and after neural correction. Panel (a) compares phase-binned median residuals. Panel (b) shows condition-binned residual RMSE. Panel (c) shows demeaned residual energy by frequency band; the shaded bars are remaining residual energy normalized by the original calibrated-model residual energy.}
-  \label{fig:residual_structure}
+  \includegraphics[width=0.86\textwidth]{figures/phase_residual_medians_measured_massprops.pdf}
+  \caption{Wingbeat-phase-binned residual medians for the measured-mass-properties branch. The phase-structured correction follows the repeatable phase-dependent force residuals left by the aligned prior and reduces the remaining phase waveform.}
+  \label{fig:phase_residual_measured}
 \end{figure*}
 
-\textit{Phase structure.} The main force-channel residuals contain repeatable wingbeat-phase waveforms, which indicates that the calibrated aerodynamic model leaves a cycle-synchronous mismatch rather than only random log noise. For $f_{x,b}$, phase-bin medians explain $0.817$ of the true residual variance and have a peak-to-peak amplitude of $15.10~\mathrm{N}$. For $f_{z,b}$, the corresponding phase $R^2$ is $0.509$ and the peak-to-peak amplitude is $28.79~\mathrm{N}$. The neural prediction follows these median waveforms closely, including the large positive $f_{x,b}$ residual during the latter half of the wingbeat and the sign-changing $f_{z,b}$ waveform over the cycle. After correction, the remaining phase peak-to-peak amplitudes fall to $0.56~\mathrm{N}$ and $0.98~\mathrm{N}$, respectively. This reduction is important because the model removes a repeatable intra-wingbeat component that the quasi-steady aerodynamic calculation does not capture.
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.88\textwidth]{figures/condition_residual_rmse_measured_massprops.pdf}
+  \caption{Condition-binned residual RMSE for key variables. The correction reduces the aligned-prior residual across the retained flight envelope, while the lateral force and some moment channels remain less uniform across conditions.}
+  \label{fig:condition_residual_measured}
+\end{figure*}
 
-\textit{Flight-condition dependence.} The force residual also varies across operating conditions, so the mismatch is not described completely by phase alone. The strongest dependence appears in $f_{x,b}$ versus angle of attack: residual RMSE changes by a factor of $2.21$ across bins, with the worst bin reaching $7.145~\mathrm{N}$. For $f_{z,b}$, the largest residual occurs at high angle of attack, reaching $14.809~\mathrm{N}$. Fig.~\ref{fig:residual_structure}(c) shows that the two force components have different trends with angle of attack: the calibrated model becomes less accurate in $f_{z,b}$ as angle of attack increases, while $f_{x,b}$ has larger residuals at the lower-angle bins in this flight envelope. Flapping frequency is also important: the highest-frequency bin reaches $6.735~\mathrm{N}$ in $f_{x,b}$ and $15.466~\mathrm{N}$ in $f_{z,b}$. The channel-aware hybrid model reduces the worst-bin errors to $0.896~\mathrm{N}$ and $2.059~\mathrm{N}$, respectively, but the remaining errors are not perfectly uniform across bins. This suggests that the learned correction is effective inside the observed envelope while still reflecting where the real-flight data provide more difficult or less repeated conditions.
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=0.88\textwidth]{figures/frequency_residual_energy_measured_massprops.pdf}
+  \caption{Demeaned residual energy by frequency band. The axial and vertical force residuals retain strong wingbeat-frequency structure before correction, and the correction removes most of that dominant band energy on the held-out logs.}
+  \label{fig:frequency_residual_measured}
+\end{figure*}
 
-\textit{Frequency-domain structure.} After subtracting segment means, most residual energy is organized around the flapping cycle. In $f_{x,b}$, $55.9\%$ of the residual energy is at the wingbeat fundamental and $26.9\%$ at the second harmonic. In $f_{z,b}$, the fundamental carries $88.4\%$ of the demeaned residual energy. These numbers are consistent with the phase-binned result: the force-model mismatch is dominated by repeatable periodic components, not by an arbitrary offset. The hybrid model removes nearly all of these components. In the dominant wingbeat-fundamental band, the remaining energy is only $0.27\%$ of the original band energy for $f_{x,b}$ and $0.13\%$ for $f_{z,b}$. Broadband high-frequency content is reduced less strongly, consistent with that band containing more sensor noise, effective-wrench reconstruction error, or nonrepeatable outdoor disturbance.
+\textit{Phase structure.} The axial and vertical force residuals contain repeatable wingbeat-phase waveforms. For $f_{x,b}$, phase-bin medians explain $0.860$ of the aligned-prior residual variance and the true residual has a peak-to-peak phase amplitude of $13.46~\mathrm{N}$. For $f_{z,b}$, the phase $R^2$ is $0.906$ and the peak-to-peak amplitude is $25.40~\mathrm{N}$. After correction, the remaining phase peak-to-peak amplitudes fall to $3.07~\mathrm{N}$ and $4.76~\mathrm{N}$, respectively. The lateral force channel has weaker phase structure, with phase $R^2=0.156$, which is consistent with its weaker prediction score in Table~\ref{tab:measured_massprops_target_results}.
 
-Together, these analyses show that the neural force residual is not merely lowering aggregate RMSE. It removes a structured discrepancy left by the calibrated aerodynamic model: a wingbeat-synchronous component, a flight-condition-dependent component, and a frequency-localized component. The remaining residual is therefore a more plausible mixture of unmodeled stochastic disturbance, label reconstruction noise, and operating points where the available flight logs provide weaker excitation.
+\textit{Flight-condition dependence.} The residual also varies across operating conditions. Across cycle-flapping-frequency bins, aligned-prior residual RMSE ranges from $3.58$ to $5.46~\mathrm{N}$ for $f_{x,b}$ and from $6.72$ to $10.58~\mathrm{N}$ for $f_{z,b}$. The highest-frequency bin is the worst bin for both channels in the current test split. After correction, the worst-bin errors become $1.93~\mathrm{N}$ and $3.22~\mathrm{N}$. This shows that the correction reduces structured mismatch inside the retained flight envelope while still leaving condition-dependent error in the more difficult bins.
+
+\textit{Frequency-domain structure.} After subtracting segment means, the dominant residual energy in $f_{x,b}$ is at the wingbeat fundamental, which carries $51.6\%$ of the residual energy. For $f_{z,b}$, the wingbeat fundamental carries $78.7\%$ of the residual energy. The remaining energy in these dominant bands is $2.51\%$ and $3.12\%$ of the original band energy, respectively. This frequency-localized reduction supports the interpretation that the correction removes repeatable wingbeat-synchronous discrepancy left by the low-dimensional prior.
+
+These analyses do not prove that the residual is a single aerodynamic mechanism. The residual may combine wing flexibility, unsteady loading, actuator timing, tail/body coupling, outdoor disturbance, airdata error, and label reconstruction effects. The useful engineering conclusion is narrower: real-flight data reveal structured simulator-to-flight effective-wrench discrepancy, and a constrained correction map can reduce that discrepancy on held-out logs.
+
+\subsection{Channel Excitation and Correctability}
+\label{subsec:channel_correctability}
+
+The second question is why the correction is stronger in some channels than others. Table~\ref{tab:channel_correctability} summarizes channel excitation and correctability diagnostics on the held-out split. The channels with the strongest final prediction, $f_{x,b}$, $f_{z,b}$, and $m_{y,b}$, also have lower normalized error and stronger explanatory structure from deployable state, actuation, airdata, and phase features. The weaker channels have higher normalized error and more broadband residual energy.
+
+\begin{table}[t]
+\centering
+\caption{Held-out channel excitation and correctability diagnostics. The deployable ridge $R^2$ uses simulator-available phase, airdata, body-rate, and control features only; angular acceleration is excluded because it is part of moment-label reconstruction.}
+\label{tab:channel_correctability}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Target & $\sigma_y$ & Corr. RMSE/$\sigma_y$ & Deployable ridge $R^2$ & Dominant residual band \\
+\midrule
+$f_{x,b}$ & 4.472 & 0.317 & 0.868 & flap fundamental \\
+$f_{y,b}$ & 1.045 & 0.851 & 0.243 & broadband high frequency \\
+$f_{z,b}$ & 8.695 & 0.302 & 0.875 & flap fundamental \\
+\midrule
+$m_{x,b}$ & 0.672 & 0.881 & 0.176 & broadband high frequency \\
+$m_{y,b}$ & 0.628 & 0.449 & 0.711 & second harmonic \\
+$m_{z,b}$ & 0.257 & 0.859 & 0.125 & broadband high frequency \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+The force-channel pattern is consistent with the residual-structure figures. The axial and vertical force channels have sustained excitation and repeatable wingbeat-frequency residual content, so a phase- and condition-dependent correction can remove a large part of the aligned-prior mismatch. The lateral force channel remains harder: its normalized error is close to the target variation scale, and its residual is more sensitive to sideslip, wind disturbance, and lateral excitation.
+
+The moment-channel pattern is more cautious. The $m_{y,b}$ channel is the most predictable moment output in the current split, but $m_{x,b}$ and $m_{z,b}$ remain lower-SNR effective rotational-wrench channels. A roll-specific diagnostic gives the same conclusion: restricting $m_{x,b}$ to high-roll-transient subsets does not make the channel reliable. The $m_{x,b}$ normalized error is $0.881$ on all test samples, $0.848$ for $|\dot{p}|$ above the $75$th percentile, and $0.884$ for $|\dot{p}|$ above the $90$th percentile. This suggests that the roll-moment limitation is not weak excitation alone; it is also consistent with angular-derivative, reference-point, timing, and smoothing sensitivity.
+
+\subsection{Structured Correction Performance}
+\label{subsec:prediction_performance}
+
+Given the residual structure above, the correction is evaluated as a log-conditioned effective-wrench predictor. Table~\ref{tab:correction_model_summary} summarizes the measured-mass-properties rerun on the fixed held-out test split. The affine-aligned DeLaurier-style prior gives a mean force-channel RMSE of $4.738~\mathrm{N}$ across $f_{x,b}$, $f_{y,b}$, and $f_{z,b}$. Adding a structured force correction reduces this mean force RMSE to $1.806~\mathrm{N}$. The deployable correction, which uses only simulator-available state, airdata, phase, frequency, body-rate, and control features, further reduces mean force RMSE to $1.644~\mathrm{N}$. The final phase-structured correction keeps this validation-selected force branch and changes mainly the effective-moment head and residual-diagnostic basis. Its mean force RMSE therefore remains $1.644~\mathrm{N}$, while mean moment RMSE decreases from $0.383~\mathrm{N\,m}$ to $0.365~\mathrm{N\,m}$ relative to the deployable correction. Thus the force-channel gain should be attributed to the deployable structured force correction, whereas the final row is used to report the channel-aware effective-moment fit and the phase-residual diagnostics consistently.
+
+\begin{table}[t]
+\centering
+\caption{Held-out test summary for the measured-mass-properties branch. The final phase-structured row keeps the deployable force branch and mainly changes the effective-moment head and diagnostic basis. Force and moment summaries are simple means of per-channel RMSE or MAE; Table~\ref{tab:measured_massprops_target_results} gives the main per-channel evidence.}
+\label{tab:correction_model_summary}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Method & Force RMSE & Force MAE & Moment RMSE & Moment MAE \\
+\midrule
+Affine-aligned prior & 4.738 & 3.893 & 0.607 & 0.482 \\
+Force correction + prior moment & 1.806 & 1.370 & 0.607 & 0.482 \\
+Deployable correction & 1.644 & 1.227 & 0.383 & 0.287 \\
+Phase-structured correction & \textbf{1.644} & \textbf{1.227} & \textbf{0.365} & \textbf{0.274} \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+The per-channel results in Table~\ref{tab:measured_massprops_target_results} show where the correction is strongest. Relative to the affine-aligned prior, the phase-structured correction reduces force-channel RMSE by $68.3\%$ for $f_{x,b}$, $15.0\%$ for $f_{y,b}$, and $69.8\%$ for $f_{z,b}$. The main axial and vertical force channels have high held-out $R^2$ values, $0.899$ and $0.909$, respectively. The lateral force channel remains the weakest force channel, with $R^2=0.276$ and $\mathrm{RMSE}/\sigma_y=0.851$.
+
+For the effective moment channels, $m_{y,b}$ has the strongest held-out fit, with $R^2=0.798$ and $\mathrm{RMSE}/\sigma_y=0.449$. The $m_{x,b}$ and $m_{z,b}$ channels remain lower-SNR outputs, with $R^2=0.224$ and $0.263$. These moment scores are reported as effective rotational-wrench prediction metrics under the measured inertia and smoothed angular-acceleration label definition, not as direct validation of isolated aerodynamic moments.
+
+\begin{table}[t]
+\centering
+\caption{Target-wise held-out test metrics for the affine-aligned prior and the phase-structured correction. $\sigma_y$ is the held-out target standard deviation. Force and moment channels are interpreted separately because they have different units and label sensitivities.}
+\label{tab:measured_massprops_target_results}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Target & Prior RMSE & Corr. RMSE & Corr. MAE & Corr. $R^2$ & Corr. RMSE/$\sigma_y$ \\
+\midrule
+$f_{x,b}$ & 4.472 & \textbf{1.419} & 1.055 & 0.899 & 0.317 \\
+$f_{y,b}$ & 1.046 & \textbf{0.889} & 0.641 & 0.276 & 0.851 \\
+$f_{z,b}$ & 8.694 & \textbf{2.624} & 1.985 & 0.909 & 0.302 \\
+\midrule
+$m_{x,b}$ & 0.675 & \textbf{0.592} & 0.433 & 0.224 & 0.881 \\
+$m_{y,b}$ & 0.869 & \textbf{0.282} & 0.220 & 0.798 & 0.449 \\
+$m_{z,b}$ & 0.277 & \textbf{0.221} & 0.169 & 0.263 & 0.859 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+Figure~\ref{fig:heldout_force_prediction_curve} shows a representative held-out log segment selected from the test logs. The affine-aligned prior captures the rough force scale but misses repeatable force excursions, especially in the axial and vertical channels. The phase-structured correction follows the reconstructed effective-force labels more closely while retaining the aligned prior as an explicit component of the force prediction.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/heldout_force_prediction_curve.pdf}
+  \caption{Representative held-out log segment comparing reconstructed effective-force labels, affine-aligned DeLaurier-style prior predictions, and the phase-structured correction. The plotted segment is a log-conditioned prediction diagnostic rather than an open-loop trajectory replay.}
+  \label{fig:heldout_force_prediction_curve}
+\end{figure*}
+
+\subsection{Held-Out Log Variation}
+\label{subsec:per_log_results}
+
+The fixed test split contains four complete held-out logs from four flight dates. Table~\ref{tab:per_log_results} reports per-log RMSE for the final phase-structured correction. Force-channel RMSE varies from $1.444$ to $1.859~\mathrm{N}$ across logs, while moment-channel RMSE varies from $0.300$ to $0.425~\mathrm{N\,m}$. This variation is expected for outdoor data because each log carries a different combination of wind condition, maneuver content, estimator history, and wingbeat operating point. The current evidence therefore supports within-envelope held-out-log prediction, not broad extrapolation to unobserved maneuvers or other platforms.
+
+\begin{table}[t]
+\centering
+\caption{Per-log held-out RMSE for the final phase-structured correction. Logs are kept intact during splitting, so these rows summarize whole-log test performance rather than shuffled sample performance.}
+\label{tab:per_log_results}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{@{}lcc@{}}
+\toprule
+Held-out log & Force RMSE & Moment RMSE \\
+\midrule
+2026-4-12 17:43:30 & 1.859 & 0.425 \\
+2026-4-14 12:30:12 & 1.444 & 0.371 \\
+2026-4-15 12:56:08 & 1.582 & 0.319 \\
+2026-4-16 19:13:30 & 1.580 & 0.300 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table}
+
+\subsection{Replay Diagnostics and Claim Boundary}
+\label{subsec:replay_claim_boundary}
+
+The replay diagnostics clarify why the main validation remains log-conditioned prediction. The moment labels are algebraically consistent with the smoothed angular acceleration used to generate them: moment-inferred angular acceleration and smoothed angular acceleration differ by only about $2.6\times10^{-15}~\mathrm{rad/s^2}$ in norm RMSE. However, smoothed angular acceleration does not exactly integrate back to the raw logged gyro. With trapezoidal integration of the smoothed acceleration, the body-rate median error is $0.135~\mathrm{rad/s}$ at $0.10~\mathrm{s}$, $0.118~\mathrm{rad/s}$ at $0.25~\mathrm{s}$, $0.128~\mathrm{rad/s}$ at $0.50~\mathrm{s}$, and $0.139~\mathrm{rad/s}$ at $1.00~\mathrm{s}$.
+
+This behavior is expected. Smoothing changes local slopes and suppresses spikes, which improves supervised label quality but changes the strict kinematic closure target. Outdoor replay also accumulates estimator noise, time-alignment error, wind disturbance, and controller-response mismatch. We therefore use replay as a diagnostic for label construction and do not present it as simulator-level validation.
 
 \subsection{Interpretation and Limitations}
 \label{subsec:interpretation_limitations}
 
-The calibrated aerodynamic model provides a physically organized baseline. The
-key result is that the force residual left by this baseline is stable and
-interpretable. In the main force channels, the residual model mainly learns
-wingbeat-synchronous correction. In the moment channels, the final model uses
-direct neural prediction because the calibrated moment output is dominated by
-large bias relative to the small measured moment range. The side-force channel
-remains the most difficult force component, likely because of weaker lateral
-excitation, wind disturbance, sideslip-estimation sensitivity, and label noise.
+The present results support a measured, log-conditioned correction of a low-dimensional flapping-wing simulator prior. The strongest evidence is in the axial and vertical force channels, together with the pitch-moment channel as a supporting effective-wrench output. These channels show stronger excitation, clearer phase or frequency structure, and lower normalized error. The weaker channels are not ignored; they identify where the current data, labels, and correction basis are less informative.
 
-The residual should not be assigned to a single physical cause. It may reflect wing flexibility, unsteady loading, phase delay, actuator timing, tail/body coupling, airframe-specific parameters, or effective-wrench label reconstruction. The value of the residual analysis is narrower but still useful: it shows where the simulator prior is systematically mismatched and which parts of that mismatch can be learned from onboard measurements.
-
-The present evaluation is log-based. It shows that the hybrid model predicts held-out effective wrench and removes structured force residual content, but it is not yet a closed-loop simulation validation. The next step is to embed the hybrid model in IsaacLab and evaluate short-horizon trajectory replay and controller performance. The dataset is also from one platform and a limited outdoor envelope, so future data should deliberately cover broader angle-of-attack, flapping-frequency, sideslip, and wind conditions, ideally with uncertainty estimates for out-of-envelope use.
+The evaluation is limited to one platform and a retained outdoor envelope. The labels are effective wrenches inferred from onboard state estimates, not direct wind-tunnel aerodynamic loads. The correction uses simulator-available inputs, but the present paper does not yet demonstrate closed-loop simulator deployment, reinforcement-learning training, or trajectory replay under modeled disturbances. Those steps remain future work after the instantaneous effective-wrench map and its uncertainty are better characterized.

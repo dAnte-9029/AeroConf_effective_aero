@@ -1,0 +1,14 @@
+{
+  "aligned_root": "/home/zn/flap-system-identification/artifacts/20260602_bc_correction_measured_massprops_v1/evaluation/aligned",
+  "frequency_summary": "/home/zn/flap-system-identification/artifacts/20260602_residual_diagnostics_measured_massprops_v1/frequency/frequency_residual_summary.csv",
+  "per_channel_metrics": "/home/zn/flap-system-identification/artifacts/20260602_bc_correction_measured_massprops_v1/evaluation/per_channel_metrics.csv",
+  "split_root": "/home/zn/flap-system-identification/dataset/canonical_v0.2_training_ready_split_measured_massprops_sg0p03_v1",
+  "targets": [
+    "fx_b",
+    "fy_b",
+    "fz_b",
+    "mx_b",
+    "my_b",
+    "mz_b"
+  ]
+}

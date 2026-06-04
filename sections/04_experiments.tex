@@ -5,29 +5,23 @@
 \subsection{Compared Models}
 \label{subsec:compared_models}
 
-We compare five model classes. The uncalibrated aerodynamic model reports the raw
-model error before fitting the calibration parameters. The calibrated
-aerodynamic model shows how far the bounded physical calibration can reduce that
-error. The direct Transformer predicts the full effective wrench with no explicit
-aerodynamic-model term. The calibrated model plus residual MLP tests whether
-instantaneous onboard variables can explain the remaining force and moment
-residuals. The channel-aware hybrid Transformer tests whether causal history
-improves residual correction while using calibrated-model residual correction for
-forces and direct neural prediction for moments.
+We compare four models from the measured-mass-properties branch. The calibrated aerodynamic model is the DeLaurier-style prior after train-only affine force alignment of the exported prior predictions. The first correction model applies a force-only structured correction and leaves the prior moment channels unchanged; it tests whether real-flight force residuals can be reduced without introducing a moment model. The deployable correction extends this model with simulator-available rates, airdata, phase, and control features for both force and effective-moment prediction. The phase-structured correction uses the same deployable feature boundary and adds explicit wingbeat-phase harmonic and interaction terms, giving the final correction used for residual-structure analysis.
 
-Together, the models separate the effects of physical calibration, residual
-learning, temporal history, and channel-specific output semantics. The direct
-Transformer serves as a black-box full-wrench reference. The residual models show
-how much accuracy is retained when the calibrated aerodynamic model remains
-explicit, and the channel-aware model tests whether force and moment channels
-benefit from different prediction semantics.
+Together, these models separate the effects of affine prior alignment, structured force correction, deployable input constraints, and channel-specific output semantics. The comparison is intentionally log-conditioned: every model is evaluated against the reconstructed effective-wrench labels on held-out logs, not by replaying the vehicle trajectory in closed-loop simulation.
 
 \subsection{Train/Validation/Test and Cross-Validation}
 \label{subsec:split_protocol}
 
-The primary experiment uses the fixed whole-log split described in Sec.~\ref{subsec:canonical_samples}. The aerodynamic-model calibration uses training logs only. Neural models are trained on training logs, selected using validation logs, and evaluated on held-out test logs. Normalization statistics, calibration parameters, and early-stopping decisions are not fitted on test logs.
+The primary experiment uses the fixed whole-log split described in Sec.~\ref{subsec:canonical_samples}. Prior alignment and correction fitting use training logs only. Model families and ridge regularization values are selected using validation logs, and the selected models are evaluated once on held-out test logs. Normalization statistics, affine prior-alignment parameters, feature fill values, and model-selection decisions are not fitted on test logs.
 
-To check whether the result depends on one particular test composition, we also run five-fold whole-log cross-validation with approximately date-stratified and sample-balanced folds. Date stratification is used to make the evaluation less sensitive to date-specific variations in weather, wind condition, and airframe condition, and to better assess generalization across flight dates. In fold $k$, log fold $k$ is used for testing, log fold $(k+1) \bmod 5$ is used for validation, and the remaining folds are used for training. The channel-aware hybrid Transformer configuration is fixed across folds. The stratification is approximate because the number of available logs differs across flight dates.
+In the measured-mass-properties rerun, the fixed paper split is the primary evidence. The test split contains four complete logs from four flight dates, so per-log metrics are also reported to show how much the fixed-split result varies across held-out log composition. A full date-stratified cross-validation rerun with the measured-mass-properties branch is left as an optional robustness check before final submission.
+
+\subsection{Replay Diagnostics}
+\label{subsec:replay_diagnostics}
+
+Replay is used only as a diagnostic for label construction, not as a primary validation metric. Outdoor open-loop replay compounds state-estimation noise, smoothing choices, time alignment, wind and disturbance terms, and controller-response mismatch. A corrected instantaneous effective-wrench map can be useful for simulation even when strict open-loop replay of the logged raw trajectory is not possible.
+
+We therefore run alpha-only replay checks to verify the rotational label pathway. Moment-inferred angular acceleration is compared against the smoothed angular acceleration used for label construction, and the smoothed acceleration is integrated over short windows to quantify how closely it returns to the raw logged gyro. These checks diagnose the smoothing and label definitions; they do not validate closed-loop simulator behavior.
 
 \subsection{Metrics}
 \label{subsec:metrics}

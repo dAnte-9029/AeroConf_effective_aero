@@ -1,0 +1,636 @@
+
+下面是建议的重构方案。核心改动是：把旧稿后半部分从“theory-guided neural residual / Transformer benchmark”重心，调整为“DeLaurier-like physical prior → real-flight residual diagnosis → deployable effective-wrench correction → IsaacLab-facing simulation model”。现有 `main.tex` 和旧摘要仍以 neural residual/Transformer 叙事为中心，且旧稿已有 Introduction、dataset、effective wrench target 和 whole-log evaluation 的基础，可以保留前半部分主线、重写方法与结果后半部分。([GitHub][1]) 下面建议按你给定的写作边界组织：不声称闭环控制验证，不把 effective wrench 说成风洞真气动力，不把 residual attribution 写成因果识别。
+
+---
+
+## 1. 推荐题目
+
+**推荐主标题**
+
+**Real-Flight-Corrected Effective Wrench Modeling for Flapping-Wing Simulation**
+
+这个标题最稳妥：突出 real-flight correction、effective wrench、simulation-facing model；不把论文包装成 NN benchmark，也不暗示已经完成 closed-loop validation。
+
+**备选标题**
+
+1. **Residual-Guided Effective Wrench Correction for Flapping-Wing Simulation from Outdoor Flight Logs**
+
+2. **From DeLaurier Prior to Deployable Wrench Correction: Flight-Log-Guided Modeling for Flapping-Wing Simulation**
+
+3. **A Deployable Grey-Box Effective-Wrench Model for Bird-Scale Flapping-Wing Simulation**
+
+不建议继续使用 “Theory-Guided Neural Residual Modeling...” 作为主标题，因为最新 force v2 / moment v2 的强叙事不是 neural architecture，而是 physical prior + residual-guided deployable correction。旧标题和旧摘要容易把 reviewer 引向“你只是做了一个 NN regression benchmark”的审稿路径。([GitHub][1])
+
+---
+
+## 2. 一段式论文 thesis
+
+本文提出一个面向 flapping-wing simulation 的 **real-flight-corrected effective wrench modeling pipeline**：首先从户外飞行日志重建 body-frame six-axis effective wrench label，并与 IsaacLab 中 DeLaurier-like aerodynamic prior 对齐；然后用 held-out residual diagnostics 分析 classical prior 和 grey-box correction 后仍存在的系统误差；最后训练只依赖可部署飞行状态、相位、频率、气流、body rates、controls、lateral proxies 和 interaction features 的 force 与 moment correction。最新验证集选择的 force v2 为 affine correction，使用 `base+rates+controls+lateral+interactions` feature group，在 held-out test logs 上将 force mean RMSE 从 physical prior 的 **8.436752** 降至 **2.113975**，并较 force v1 的 **2.300059** 进一步改进；moment v2 使用 deployable corrected force 的 `r_hat(x) × F_corr + tau_free_hat(x)` 结构，将 moment mean RMSE 从 prior 的 **0.354762** 降至 **0.002078**，并较 corrected-force v1 baseline 的 **0.002277** 小幅改进。本文的主张应限定为：这些结果 **suggest** real-flight residuals are structured and partially predictable for held-out log prediction；它们支持未来 IsaacLab simulation / control / RL 的模型改进，但尚不构成 closed-loop 或 long-horizon rollout validation。([GitHub][2])
+
+---
+
+## 3. 修订后的 section-by-section 结构
+
+### Section 1 — Introduction
+
+**Role in paper**
+建立问题：classical flapping-wing aerodynamic models 对 simulation 有价值，但 outdoor real-flight logs 暴露出 systematic effective-wrench mismatch。引出目标：不是替代物理模型，而是把 physical prior 修正成 simulation-facing deployable model。
+
+**Key content**
+保留现有 Introduction 中关于 DeLaurier prior、simulation/RL motivation、real-flight evaluation 的主线；把旧的 “neural residual model” 叙事弱化为“residual-guided deployable correction”。现有 Introduction 已明确说本文不训练 RL controller，这句话应保留并提前保护审稿风险。([GitHub][3])
+
+**Figures/tables**
+无必需表格。可以在 Introduction 末尾放一个 compact pipeline schematic，也可以放到 Methods 开头。
+
+**Safe claims**
+“Classical aerodynamic priors provide useful structure but may leave systematic residuals under outdoor flight conditions.”
+“Real-flight logs can be used to construct an effective-wrench prediction benchmark for simulator-facing correction.”
+“This paper improves held-out log prediction of effective wrench.”
+
+**Claims to avoid**
+避免说 “we identify the true aerodynamic model”。
+避免说 “validated for RL/control”。
+避免说 “residuals prove a specific physical mechanism。”
+
+---
+
+### Section 2 — Vehicle, Flight Logs, and Effective Wrench Target
+
+**Role in paper**
+定义数据、平台、日志处理和 label。这个 section 是 reviewer 判断数据可信度的关键。
+
+**Key content**
+保留现有平台和数据采集描述：bird-scale flapping-wing vehicle、outdoor autonomous flight、100 Hz canonical samples、airdata/RTK/IMU/actuator/wing encoder signals。明确 effective wrench 是 about measured CG 的 net non-gravitational external wrench，包含 wing/tail/body/mechanism/disturbance effects，不是 direct wind-tunnel aerodynamic measurement。现有草稿已经给出 29 logs、74.8 min valid data、whole-log 20/5/4 train/val/test split 和 sample counts，这些应保留。([GitHub][4])
+
+**Figures/tables**
+Main paper：vehicle image、sensor/logging schematic、operating envelope summary、wrench reference schematic。现有 repo 已有 `operating_envelope_summary` 和 `wrench_reference_schematic` 图，可继续使用或重画成更 publication-ready 的版本。([GitHub][5])
+
+**Safe claims**
+“Effective wrench labels are log-derived dynamic quantities.”
+“The target is appropriate for simulator-facing model correction.”
+“Whole-log splitting avoids random sample leakage across train/validation/test.”
+
+**Claims to avoid**
+避免说 “measured aerodynamic force”。
+避免说 “ground-truth force from force sensor”。
+避免把 label residual 解释成唯一气动源。
+
+---
+
+### Section 3 — DeLaurier-Like Prior and Prior Gap
+
+**Role in paper**
+把 classical model 放在中心，而不是把它当作一个被 NN 击败的 baseline。这个 section 应解释 physical skeleton：geometry、wing motion、airdata、body/tail terms、calibration/export to IsaacLab。
+
+**Key content**
+描述 IsaacLab DeLaurier-like prior 如何输出 six-component body-frame wrench；说明 prior 是用于 simulation 的 structured model，而不是 fully identified truth model。现有 Method section 已写到 DeLaurier-style prior、six-component wrench vector、wing motion / airdata / body rates / tail / fuselage terms 和 low-dimensional calibration parameters，可保留并精简。([GitHub][6]) IsaacLab repo 中也已有 wind-tunnel / trim / modulation / flapping simulation scripts 和 DeLaurier output artifacts，可作为 simulation-facing prior infrastructure 的支撑，但不要说 v2 correction 已经完成闭环仿真验证。([GitHub][7])
+
+**Figures/tables**
+Main paper：prior-vs-log effective wrench gap figure，最好是 one representative log 的 force/moment overlay + residual。
+Table：prior RMSE by channel。
+
+**Safe claims**
+“The prior provides a physically structured baseline.”
+“The prior leaves large held-out effective-wrench discrepancies, especially fz and pitch moment.”
+“The residuals motivate correction around the prior.”
+
+**Claims to avoid**
+避免说 “DeLaurier model failed”。
+避免说 “we re-identified the complete DeLaurier aerodynamic parameters”。
+避免把 prior gap 解释成纯 aerodynamic error。
+
+---
+
+### Section 4 — Residual Attribution as Diagnostic Evidence
+
+**Role in paper**
+解释为什么 force v2 / moment v2 要加入 rates、controls、lateral proxies 和 interactions。这个 section 是从“观察到误差”到“设计 deployable correction features”的桥梁。
+
+**Key content**
+定义 residuals：prior residual、corrected force residual、moment residual。展示 component-wise residual attribution：`fy_b` residual 与 yaw rate、dynamic-pressure-weighted yaw rate、rudder/elevon-diff/lateral proxy 等变量有关；`mx_b` residual 更明显地与 roll rate 和 phase/rate interaction 有关；`my_b` 和 `mz_b` 也有 body-rate structure 但解释较弱。必须强调：这是 diagnostic association，不是 aerodynamic causality。([GitHub][8])
+
+**Figures/tables**
+Main paper：one compact attribution figure，建议四个 panel：`fy_b`, `mx_b`, `my_b`, `mz_b` 的 top associated feature groups 或 held-out ablation reduction。
+Appendix：完整 correlation ranking、bin plots、per-log residual attribution tables。
+
+**Safe claims**
+“Residual attribution suggests that body rates, controls, lateral proxies, and phase interactions are associated with remaining errors.”
+“`mx_b` shows the clearest rate-associated residual structure.”
+“`fy_b` remains difficult despite weak but consistent lateral-directional associations.”
+
+**Claims to avoid**
+避免说 “rudder causes the fy residual”。
+避免说 “we identified roll damping coefficient”。
+避免说 “residual attribution proves aerodynamic mechanism。”
+
+---
+
+### Section 5 — Deployable Effective-Wrench Correction Method
+
+**Role in paper**
+这是新的核心 Methods。需要把 force correction 和 moment correction 分开讲，并把 deployability constraints 写清楚。
+
+**Key content**
+建议分成五个 sub-sections：
+
+1. **Feature construction and deployability**
+   `base` features 包括 phase harmonics、alpha、flap frequency、airspeed、q_dyn、phase-regime interactions；再加入 body rates、controls、lateral proxy、interaction features。v2 plan 和 training script 明确这些 feature groups，且目标是不使用 `true_force`、wrench targets、non-deployable labels for inference。([GitHub][9])
+
+2. **Force correction model**
+   写成：
+   [
+   F_{\mathrm{corr}}(x)
+   ====================
+
+   F_{\mathrm{prior}}(x)
+   +
+   \Delta F_\theta(x, F_{\mathrm{prior}})
+   ]
+   其中 selected force v2 是 affine correction，即 correction 可包含 prior-force interaction terms；不要叫 “black-box NN”。训练脚本中 force model 直接 fit residual target，并在 validation `force_mean` 上选择 additive/affine、feature group 和 alpha。([GitHub][10])
+
+3. **Moment correction model**
+   主模型写成：
+   [
+   M_{\mathrm{corr}}(x)
+   ====================
+
+   \hat r(x) \times F_{\mathrm{corr}}(x)
+   +
+   \hat \tau_{\mathrm{free}}(x)
+   ]
+   这比 direct residual 更符合“force-arm effective wrench”叙事：moment 不是独立黑箱，而是借助 corrected force 和 learned effective arm/free-torque structure。training script 中 `force_arm` form 明确用 `force_v2` 进行 moment prediction。([GitHub][10])
+
+4. **Model selection protocol**
+   强调 model form、feature group、regularization alpha 只在 validation set 上选择；test set 只用于 final reporting。v2 result file 明确 selection used validation RMSE only，deployable metrics/predictions did not use `true_force`。([GitHub][2])
+
+5. **Diagnostic upper bounds**
+   如果提到 `true_force` dynamic-arm results，只放在 appendix 或 discussion，并明确是 diagnostic upper bound，不是 deployable result。v2 plan 明确 `true_force` 只能作为 optional diagnostic upper bound，不能用于 final deployable metrics。([GitHub][9])
+
+**Figures/tables**
+Main paper：method pipeline schematic + force/moment model block diagram。
+Appendix：feature group definitions and hyperparameter grid。
+
+**Safe claims**
+“The selected correction is a deployable candidate under the logged-sensor feature set.”
+“The moment model uses corrected deployable force, not true force.”
+“Validation-only selection reduces test-set tuning risk.”
+
+**Claims to avoid**
+避免说 “fully deployable onboard controller” unless 已经上机。
+避免说 “causal model of aerodynamic force arm”。
+避免把 direct residual / hybrid negative candidates 当作成功结果。
+
+---
+
+### Section 6 — Experimental Protocol
+
+**Role in paper**
+保护可信度。Reviewer 很可能追问 leakage、whole-log split、validation selection 和 test usage。
+
+**Key content**
+明确 train/val/test 是 whole-log split，而不是 sample-level random split。保留现有草稿中 20/5/4 logs 和 sample counts 的 split 描述。([GitHub][4]) 说明 primary metrics 是 per-channel RMSE 和 mean RMSE；force 和 moment 分开报告。说明 validation 选择 final candidate，test 只报告一次。说明不使用 `true_force` 进行 deployable inference；script 中也把 `uses_true_force_for_inference=False` 写入 inference model state。([GitHub][10])
+
+**Figures/tables**
+Main paper：Protocol table。
+Columns：split, number of logs, number of samples, used for, allowed operations。
+
+**Safe claims**
+“Held-out logs are used for final performance reporting.”
+“Validation-only selection is used for model-form and regularization selection.”
+“No true-force input is required for the reported deployable candidate.”
+
+**Claims to avoid**
+避免暗示 test set 用于 architecture search。
+避免把 diagnostic runs 混入 main deployable comparison。
+
+---
+
+### Section 7 — Results
+
+**Role in paper**
+这是新后半部分最重要的 section。建议按“prior gap → force v2 → moment v2 → per-log stability → qualitative curves → limitations”组织。
+
+#### 7.1 Prior gap analysis
+
+先报告 physical prior 的 held-out test errors，解释为什么 correction necessary。不要直接跳到 v2 victory。
+
+**Safe message**
+“Classical prior provides physical structure but leaves large effective-wrench residuals on held-out logs.”
+
+#### 7.2 Force correction results
+
+主表如下：
+
+| Force channel | Physical prior RMSE | Force v1 RMSE | Force v2 RMSE | Main interpretation                            |
+| ------------- | ------------------: | ------------: | ------------: | ---------------------------------------------- |
+| `fx_b`        |            5.420306 |      1.817299 |  **1.632014** | v2 improves over v1                            |
+| `fy_b`        |            3.523583 |      1.398994 |  **1.337994** | v2 improves, but remains difficult             |
+| `fz_b`        |           13.105000 |      3.257462 |  **2.992153** | v2 improves over v1                            |
+| `force_mean`  |            8.436752 |      2.300059 |  **2.113975** | selected v2 improves held-out force prediction |
+
+The selected force v2 model is affine correction with `base+rates+controls+lateral+interactions`, alpha = 1; this selection and test metrics are supported by the v2 result file.([GitHub][2])
+
+**Narrative**
+“Adding residual-attribution-motivated variables is associated with additional held-out force improvement, including `fy_b`, but `fy_b` should still be described as a harder lateral channel rather than solved.”
+
+#### 7.3 Moment correction results
+
+主表如下：
+
+| Moment channel | Physical prior RMSE | v1 corrected-force RMSE | v1 features-only RMSE | v2 force-arm RMSE | Main interpretation |
+| -------------- | ------------------: | ----------------------: | --------------------: | ----------------: | ------------------- |
+| `mx_b`         |            0.071418 |                0.003097 |              0.003086 |      **0.002764** | v2 improves         |
+| `my_b`         |            0.601734 |                0.002388 |              0.002447 |      **0.002240** | v2 improves         |
+| `mz_b`         |            0.101904 |                0.000515 |          **0.000482** |          0.000551 | v2 not best         |
+| `moment_mean`  |            0.354762 |                0.002277 |              0.002291 |      **0.002078** | v2 improves mean    |
+
+The selected moment v2 model is `force_arm + tau_free`, feature group `base+rates+controls+lateral+interactions`, alpha = 1000. The paper should explicitly state that `mz_b` remains an unresolved yaw-moment / low-confidence residual channel because v2 is worse than the v1 features-only baseline on that channel.([GitHub][2])
+
+**Narrative**
+“Moment v2 improves `mx_b`, `my_b`, and moment mean relative to corrected-force v1, suggesting that a deployable force-arm structure can absorb part of the moment residual. However, yaw moment is not resolved.”
+
+#### 7.4 Per-log stability
+
+Use a compact main-paper table if space allows; otherwise move full table to appendix and keep one sentence in main paper.
+
+| Test log                    |          `fy_b` v1 → v2 |       `mx_b` prior → v2 |       `mz_b` prior → v2 |
+| --------------------------- | ----------------------: | ----------------------: | ----------------------: |
+| `log_18_2026-4-15-12-56-08` | 1.502038 → **1.419655** | 0.052522 → **0.002635** | 0.097475 → **0.000527** |
+| `log_34_2026-4-16-19-13-30` | 1.127175 → **1.098101** | 0.046409 → **0.002125** | 0.107355 → **0.000414** |
+| `log_4_2026-4-12-17-43-30`  | 1.451491 → **1.418846** | 0.097896 → **0.003125** | 0.093470 → **0.000610** |
+| `log_4_2026-4-14-12-30-12`  | 1.465267 → **1.363353** | 0.067993 → **0.002951** | 0.110659 → **0.000609** |
+
+The strongest conservative sentence is: “`fy_b` improvement over force v1 is stable across all four held-out test logs, although the absolute `fy_b` error remains higher than desired.”([GitHub][2])
+
+#### 7.5 Qualitative prediction curves
+
+Include representative time windows, not full rollout claims. Show label, prior, force v1, force v2, moment v2. Use phase shading or wingbeat markers if readable.
+
+**Safe message**
+“Prediction curves suggest that v2 reduces systematic bias and some phase-dependent residual structure in held-out logs.”
+
+**Avoid**
+Do not call these “trajectory rollout validation” unless the simulation was actually run forward closed-loop.
+
+#### 7.6 Limitations: `fy_b` and `mz_b`
+
+This should be explicit, not hidden.
+
+`fy_b`: v2 improves over force v1 overall and on all four test logs, but attribution evidence is weak and lateral-directional channels may depend on wind, beta proxy quality, tail/control effects, and effective-label uncertainty. Residual attribution gives only small held-out reductions for `fy_b`, so wording should be “associated with” rather than “explained by.”([GitHub][8])
+
+`mz_b`: v2 improves over the physical prior but is worse than the v1 features-only baseline. This should be framed as unresolved yaw-moment modeling, not as a failed paper result. It is useful because it bounds the current deployable force-arm formulation and motivates yaw-specific feature/model work.([GitHub][2])
+
+---
+
+### Section 8 — Discussion: Simulation Implications and Boundaries
+
+**Role in paper**
+Connect results back to IsaacLab and future control/RL without overclaiming.
+
+**Key content**
+Say the resulting deployable correction is designed to be inserted into a flapping-wing simulator as an effective-wrench model. IsaacLab repo contains simulation, wind-tunnel, trim, flapping, and task infrastructure, but the paper should say the present evidence is held-out log prediction, not closed-loop control validation.([GitHub][11])
+
+**Safe claims**
+“The correction is simulation-facing.”
+“The results motivate short-horizon replay and closed-loop evaluation in future IsaacLab work.”
+“The deployable candidate avoids true-force dependence at inference.”
+
+**Claims to avoid**
+避免说 “we improved RL performance”。
+避免说 “the simulator is now validated for policy training”。
+避免说 “long-horizon stability was demonstrated”。
+
+---
+
+### Section 9 — Conclusion
+
+**Role in paper**
+Summarize conservative contribution.
+
+**Key content**
+One paragraph: log-derived effective wrench, DeLaurier prior gap, residual attribution, deployable force and moment correction, held-out improvements, unresolved fy/mz limitations, future simulation validation.
+
+**Safe final sentence**
+“Together, these results suggest that real-flight residuals around a classical flapping-wing aerodynamic prior can be converted into a deployable effective-wrench correction for simulator-facing use, while leaving lateral-force and yaw-moment residuals as important open channels.”
+
+---
+
+## 4. Proposed contribution list
+
+Recommended contribution wording:
+
+1. **A real-flight effective-wrench evaluation pipeline for flapping-wing simulation.**
+   The paper reconstructs six-component body-frame effective wrench labels from outdoor flight logs and evaluates simulation-facing models under a whole-log train/validation/test protocol. The target is explicitly a log-derived effective wrench, not direct wind-tunnel aerodynamic force.([GitHub][4])
+
+2. **A DeLaurier-prior-centered residual analysis rather than a generic regression benchmark.**
+   The paper uses a DeLaurier-like IsaacLab prior as a physical skeleton and analyzes structured residuals around that prior, instead of treating the model as an arbitrary input-output learner.([GitHub][6])
+
+3. **Residual-attribution-guided deployable feature design.**
+   Residual diagnostics suggest that body rates, controls, lateral proxies, and phase interactions are associated with remaining force/moment errors, motivating the v2 feature groups while avoiding causal claims.([GitHub][8])
+
+4. **A validation-selected affine force correction that improves held-out force prediction.**
+   The selected force v2 model uses `base+rates+controls+lateral+interactions`, alpha = 1, and reduces test `force_mean` RMSE from **8.436752** for the physical prior to **2.113975**, improving over force v1 at **2.300059**.([GitHub][2])
+
+5. **A deployable force-arm moment correction using corrected force, not true force.**
+   The selected moment v2 model uses
+   [
+   M_{\mathrm{corr}}=\hat r(x)\times F_{\mathrm{corr}}+\hat\tau_{\mathrm{free}}(x)
+   ]
+   and improves test `moment_mean` RMSE from **0.354762** for the physical prior to **0.002078**, while clearly reporting that `mz_b` remains worse than the v1 features-only baseline.([GitHub][2])
+
+6. **A bounded, simulation-facing deployable candidate.**
+   The final model is selected using validation metrics and does not require `true_force` for inference; this makes it a candidate for future IsaacLab integration, not yet a demonstrated closed-loop controller.([GitHub][2])
+
+---
+
+## 5. Recommended Methods section structure
+
+### 5.1 Classical aerodynamic prior
+
+Explain the DeLaurier-like prior as the physical skeleton:
+
+[
+W_{\mathrm{prior}}(x)
+=====================
+
+\begin{bmatrix}
+F_{\mathrm{prior}}(x) \
+M_{\mathrm{prior}}(x)
+\end{bmatrix}
+]
+
+where (x) includes wing phase/frequency, flight condition, airdata, body rates, and control-related quantities available to the simulator. Mention IsaacLab implementation and low-dimensional calibration only as prior construction, not as complete aerodynamic identification.([GitHub][6])
+
+### 5.2 Effective wrench target
+
+Define:
+
+[
+W_{\mathrm{eff}}(t)
+===================
+
+\begin{bmatrix}
+F_{\mathrm{eff}}(t) \
+M_{\mathrm{eff}}(t)
+\end{bmatrix}
+]
+
+as the log-derived non-gravitational external wrench about the measured CG. State clearly that it includes the net effects required by the rigid-body equations and may include aerodynamic, mechanism, label, disturbance, and modeling effects.([GitHub][4])
+
+### 5.3 Residual attribution
+
+Define residuals:
+
+[
+R_F = F_{\mathrm{eff}} - F_{\mathrm{prior/corr}},
+\quad
+R_M = M_{\mathrm{eff}} - M_{\mathrm{prior/corr}}
+]
+
+Then describe correlation ranking, bins, held-out small-model ablations, and feature-group diagnostics. Use this only to motivate candidate features. The diagnostic file explicitly warns that this is not strict aerodynamic causal attribution.([GitHub][8])
+
+### 5.4 Force correction
+
+Recommended text structure:
+
+[
+F_{\mathrm{v2}}(x)
+==================
+
+F_{\mathrm{prior}}(x)
++
+\Delta F_\theta(x,F_{\mathrm{prior}})
+]
+
+For selected v2:
+
+* model form: affine correction;
+* feature group: `base+rates+controls+lateral+interactions`;
+* alpha = 1;
+* selection metric: validation `force_mean` RMSE;
+* test set used only after selection.
+
+This is supported both by the result file and the training script’s force-candidate selection loop.([GitHub][2])
+
+### 5.5 Force-arm moment correction
+
+Recommended text structure:
+
+[
+M_{\mathrm{v2}}(x)
+==================
+
+\hat r_\phi(x) \times F_{\mathrm{v2}}(x)
++
+\hat\tau_\psi(x)
+]
+
+where (\hat r_\phi(x)) is an effective force-arm correction and (\hat\tau_\psi(x)) is a free-torque residual term. This should be framed as an effective-wrench structure, not literal recovery of a physical instantaneous aerodynamic center.([GitHub][10])
+
+### 5.6 Deployability constraints
+
+State explicitly:
+
+* no `true_force` input at inference;
+* no target wrench or future information at inference;
+* validation-only model selection;
+* test set only for final reporting;
+* diagnostic true-force dynamic-arm results are excluded from main deployable comparison;
+* current result is log-prediction evidence, not closed-loop simulation validation.
+
+These constraints are central to the paper’s credibility.([GitHub][2])
+
+---
+
+## 6. Recommended Results section structure
+
+### Results 1 — Prior gap
+
+Start with the physical prior gap table and one qualitative curve. This makes the later correction meaningful.
+
+**Key sentence**
+“The DeLaurier-like prior provides a structured simulator model, but held-out logs show large effective-wrench discrepancies, particularly in `fz_b` and `my_b`.”
+
+### Results 2 — Force correction
+
+Use the force table above. Emphasize:
+
+* v2 improves all force channels over force v1;
+* `fy_b` improves over force v1 on all four held-out test logs;
+* `fy_b` remains a harder channel.
+
+The v2 result file directly supports these numbers and the all-four-log statement.([GitHub][2])
+
+### Results 3 — Moment correction
+
+Use the moment table above. Emphasize:
+
+* v2 force-arm improves `mx_b`, `my_b`, and mean relative to corrected-force v1;
+* `mz_b` is worse than the v1 features-only baseline;
+* direct-residual and hybrid v2 candidates are negative results and should be appendix-only or briefly mentioned as rejected candidates.
+
+### Results 4 — Per-log stability
+
+Show a compact table or bar chart:
+
+* `fy_b` v1 → v2 per test log;
+* `mx_b` prior → v2 per test log;
+* optionally `mz_b` prior → v2 but with caveat that prior comparison is easier than v1 baseline comparison.
+
+### Results 5 — Qualitative prediction curves
+
+Recommended curves:
+
+1. force channels over a representative held-out time window;
+2. moment channels over the same or another representative window;
+3. residual panels showing prior residual vs v2 residual;
+4. wing phase or flapping phase overlay if it improves readability.
+
+**Safe language**
+“The curves suggest reduced systematic bias and improved tracking of log-derived effective wrench over held-out windows.”
+
+**Unsafe language**
+“Stable closed-loop simulator behavior is demonstrated.”
+
+### Results 6 — Limitations and error channels
+
+Make this a formal subsection, not an afterthought.
+
+For `fy_b`:
+
+> Although v2 reduces `fy_b` RMSE relative to v1 on every held-out test log, the residual-attribution signal is weak and should be interpreted as lateral-directional association rather than a solved force channel.
+
+For `mz_b`:
+
+> The yaw-moment channel remains unresolved: v2 improves over the physical prior but is worse than the v1 features-only baseline, so the selected force-arm structure should be treated as a deployable moment candidate rather than a complete yaw-moment solution.
+
+---
+
+## 7. Figure and table plan
+
+### Main paper figures
+
+**Figure 1 — Paper pipeline schematic**
+`Flight logs → effective wrench reconstruction → DeLaurier-like IsaacLab prior → residual attribution → deployable force correction → force-arm moment correction → future simulation integration.`
+This figure should visually prevent the reviewer from interpreting the paper as a generic NN benchmark.
+
+**Figure 2 — Platform, log processing, and operating envelope**
+Combine vehicle image, sensor/logging flow, and existing operating-envelope summary. The repo already contains operating-envelope and wrench-reference figures.([GitHub][5])
+
+**Figure 3 — Effective wrench target and prior gap**
+Show body-frame wrench definition plus representative prior-vs-label curves.
+
+**Figure 4 — Residual attribution summary**
+Top feature-group associations for `fy_b`, `mx_b`, `my_b`, `mz_b`. Keep the caption conservative: “diagnostic association, not causal attribution.”
+
+**Figure 5 — Deployable correction architecture**
+Two-panel diagram: force affine residual correction and moment force-arm/free-torque head.
+
+**Figure 6 — Held-out prediction curves**
+Representative force and moment prediction curves: label, prior, v1, v2.
+
+### Main paper tables
+
+**Table 1 — Dataset and split protocol**
+29 logs, 20/5/4 split, sample counts, use of train/validation/test.
+
+**Table 2 — Force RMSE**
+Prior vs force v1 vs force v2.
+
+**Table 3 — Moment RMSE**
+Prior vs v1 corrected-force vs v1 features-only vs v2 force-arm.
+
+**Table 4 — Per-log stability**
+If page limit allows, keep in main paper because it preempts “one lucky test log” criticism. Otherwise include a compact one-line statement in main paper and move full table to appendix.
+
+### Appendix / supplement figures and tables
+
+* full feature-group and alpha grid;
+* additive vs affine candidate comparison;
+* direct-residual and hybrid moment negative results;
+* true-force dynamic-arm diagnostic upper-bound results, clearly marked non-deployable;
+* full residual attribution rankings and bin plots;
+* all held-out log prediction curves;
+* label reconstruction sensitivity / uncertainty notes;
+* model artifact and inference-state description;
+* old Transformer or neural residual baseline only if needed for historical comparison, not as main thesis.
+
+---
+
+## 8. Reviewer-risk analysis
+
+| Likely reviewer question                                            | Risk        | How the paper should preempt it                                                                                                                                                                                      |
+| ------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| “Is effective wrench actually measured aerodynamic force?”          | High        | State repeatedly that it is log-derived net non-gravitational effective wrench about CG, not wind-tunnel force. Include a target-definition subsection and schematic.([GitHub][4])                                   |
+| “Is this just a neural network regression benchmark?”               | High        | Center the paper on DeLaurier prior, residual attribution, affine force correction, and force-arm moment structure. Do not foreground Transformer/NN benchmark language.                                             |
+| “Was the test set used for model selection?”                        | High        | Include a protocol table: train fits, validation selects model form/features/alpha, test reports final metrics only. v2 results explicitly use validation-only selection.([GitHub][2])                               |
+| “Does the deployable model require true force?”                     | High        | State no deployable metric/prediction uses `true_force`; true-force dynamic-arm is diagnostic upper bound only. The script also records `uses_true_force_for_inference=False`.([GitHub][2])                          |
+| “Are residual-attribution variables causal?”                        | High        | Use “associated with”, “suggests”, “diagnostic”. Do not say rudder, roll damping, or yaw dynamics are identified.([GitHub][8])                                                                                       |
+| “Why is `mz_b` worse than the v1 features-only baseline?”           | High        | Acknowledge in main Results and Discussion. Frame as unresolved yaw-moment channel and motivation for future yaw-specific modeling.                                                                                  |
+| “Why is `fy_b` still difficult?”                                    | Medium-high | Say v2 improves `fy_b` over v1 on all four test logs, but absolute error and weak residual attribution indicate lateral-force uncertainty remains.([GitHub][2])                                                      |
+| “Does this improve simulation rollouts or control?”                 | High        | Say current evidence is held-out log prediction. IsaacLab integration is motivation/future work unless actual rollout results are added. Existing draft already avoids claiming RL controller training.([GitHub][3]) |
+| “Are the moment numbers physically meaningful or just tiny labels?” | Medium      | Report per-channel RMSE, compare against prior and baselines, show qualitative curves, and discuss label construction/CG sensitivity.                                                                                |
+| “Why use force-arm structure if direct residual exists?”            | Medium      | Explain force-arm is a structured deployable candidate; direct_residual/hybrid candidates performed poorly in v2 and should be shown as rejected candidates or appendix.([GitHub][2])                                |
+
+---
+
+## 9. Claim–evidence map
+
+| Major claim                                                                                              | Evidence source                                                                                                                                                                      |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The target is a log-derived body-frame effective wrench, not direct wind-tunnel aerodynamic measurement. | Current dataset section defines effective wrench as net non-gravitational external wrench and explicitly warns against interpreting it as pure aerodynamic measurement.([GitHub][4]) |
+| Existing paper front half can be retained with modifications.                                            | Current repo structure has Introduction, dataset, method, experiments, results, conclusion sections; front-half dataset and target definitions are already developed.([GitHub][12])  |
+| The old draft over-centers neural residual/Transformer framing relative to the new result story.         | Current title and abstract use “Theory-Guided Neural Residual Modeling” and Transformer-based old metrics.([GitHub][1])                                                              |
+| DeLaurier-like prior is the physical skeleton.                                                           | Current method section describes a DeLaurier-style prior implemented in IsaacLab, outputting the same six-component body-frame wrench.([GitHub][6])                                  |
+| IsaacLab repo supports simulation-facing prior infrastructure.                                           | IsaacLab branch contains DeLaurier output artifacts, flapping simulation scripts, trim/wind-tunnel scripts, source tree, and tests.([GitHub][7])                                     |
+| Whole-log split should be used and preserved.                                                            | Current dataset section states 29 logs split into 20 train, 5 validation, 4 test logs with sample counts.([GitHub][4])                                                               |
+| v2 selection is validation-only, with test used for final reporting.                                     | v2 result file states selection used validation RMSE only and test is final reporting; v2 plan marks this as non-negotiable.([GitHub][2])                                            |
+| Deployable v2 does not use `true_force` at inference.                                                    | v2 result file states no deployable metric/prediction used `true_force`; training artifacts record `uses_true_force_for_inference=False`.([GitHub][2])                               |
+| Residual attribution motivates rates/controls/lateral/interactions but does not prove causality.         | Component residual attribution diagnostic says it identifies candidate mismatch sources, not strict aerodynamic causal attribution.([GitHub][8])                                     |
+| Force v2 selected model is affine with `base+rates+controls+lateral+interactions`, alpha = 1.            | v2 result file and training script selection logic.([GitHub][2])                                                                                                                     |
+| Force v2 improves held-out force prediction over prior and force v1.                                     | v2 force metrics: force mean 8.436752 → 2.300059 → 2.113975; all channels improve over v1.([GitHub][2])                                                                              |
+| `fy_b` improves over force v1 on all four test logs but remains difficult.                               | v2 result file gives per-log `fy_b` v1→v2 improvements and notes `fy_b` remains a key residual channel.([GitHub][2])                                                                 |
+| Moment v2 selected model is `force_arm + tau_free`, using corrected force.                               | v2 result file selects force_arm; training script implements `r_hat × force + tau_free`.([GitHub][2])                                                                                |
+| Moment v2 improves `mx_b`, `my_b`, and moment mean relative to corrected-force v1.                       | v2 moment metrics: mean 0.002277 → 0.002078, `mx_b` 0.003097 → 0.002764, `my_b` 0.002388 → 0.002240.([GitHub][2])                                                                    |
+| `mz_b` remains unresolved because v2 is worse than v1 features-only.                                     | v2 result file: `mz_b` v1 features-only 0.000482 vs v2 0.000551.([GitHub][2])                                                                                                        |
+| The paper should not claim closed-loop validation.                                                       | Existing intro says no RL controller is trained; existing conclusion frames simulator embedding and trajectory replay/control as future work.([GitHub][3])                           |
+
+---
+
+## 10. Suggested rewritten abstract outline
+
+不要现在写成 polished final abstract；建议按下面骨架写。
+
+**Sentence 1 — Problem / motivation**
+“Flapping-wing simulators often rely on classical aerodynamic priors, but outdoor real-flight logs reveal effective-wrench discrepancies that can limit simulator fidelity for future control and reinforcement-learning studies.”
+
+**Sentence 2 — Target definition**
+“We construct six-component body-frame effective-wrench labels from flight logs of a bird-scale flapping-wing vehicle and compare these labels against a DeLaurier-like prior implemented for simulation.”
+
+**Sentence 3 — Method overview**
+“We introduce a residual-guided deployable correction pipeline: residual attribution first identifies associations with body rates, controls, lateral proxies, and phase interactions; then validation-selected force and moment correction models are trained using only deployable features.”
+
+**Sentence 4 — Force result with numbers**
+“The selected affine force correction using `base+rates+controls+lateral+interactions` reduces held-out test `force_mean` RMSE from **8.436752** for the physical prior to **2.113975**, improving over the force v1 baseline at **2.300059**; per-channel RMSEs improve from **5.420306 → 1.632014** for `fx_b`, **3.523583 → 1.337994** for `fy_b`, and **13.105000 → 2.992153** for `fz_b`.”
+
+**Sentence 5 — Moment result with numbers**
+“The selected deployable moment correction, (M_{\mathrm{corr}}=\hat r(x)\times F_{\mathrm{corr}}+\hat\tau_{\mathrm{free}}(x)), reduces `moment_mean` RMSE from **0.354762** for the physical prior to **0.002078**, improving over the corrected-force v1 baseline at **0.002277**.”
+
+**Sentence 6 — Limitation / conservative boundary**
+“However, `fy_b` remains a challenging lateral-force channel, and `mz_b` remains unresolved: the v2 yaw-moment RMSE of **0.000551** is worse than the v1 features-only baseline of **0.000482**.”
+
+**Sentence 7 — Final bounded contribution**
+“These results suggest that real-flight residuals around a classical flapping-wing aerodynamic prior can be converted into a deployable effective-wrench correction for simulator-facing use, while the present evidence remains held-out log prediction rather than closed-loop simulation or control validation.”
+
+[1]: https://raw.githubusercontent.com/dAnte-9029/AeroConf_effective_aero/main/main.tex "raw.githubusercontent.com"
+[2]: https://raw.githubusercontent.com/dAnte-9029/flap-system-identification/main/docs/results/2026-05-26-deployable-wrench-correction-v2.md "raw.githubusercontent.com"
+[3]: https://raw.githubusercontent.com/dAnte-9029/AeroConf_effective_aero/main/sections/01_intro.tex "raw.githubusercontent.com"
+[4]: https://raw.githubusercontent.com/dAnte-9029/AeroConf_effective_aero/main/sections/02_dataset.tex "raw.githubusercontent.com"
+[5]: https://github.com/dAnte-9029/AeroConf_effective_aero/tree/main/figures "AeroConf_effective_aero/figures at main · dAnte-9029/AeroConf_effective_aero · GitHub"
+[6]: https://raw.githubusercontent.com/dAnte-9029/AeroConf_effective_aero/main/sections/03_method.tex "raw.githubusercontent.com"
+[7]: https://github.com/dAnte-9029/IsaacLab/tree/paper-effective-wrench-comparison/outputs_DeLaurier "IsaacLab/outputs_DeLaurier at paper-effective-wrench-comparison · dAnte-9029/IsaacLab · GitHub"
+[8]: https://raw.githubusercontent.com/dAnte-9029/flap-system-identification/main/docs/results/2026-05-26-component-residual-attribution-diagnostic.md "raw.githubusercontent.com"
+[9]: https://raw.githubusercontent.com/dAnte-9029/flap-system-identification/main/docs/plans/2026-05-26-deployable-wrench-correction-v2-plan.md "raw.githubusercontent.com"
+[10]: https://github.com/dAnte-9029/flap-system-identification/blob/main/scripts/train_deployable_wrench_correction_v2.py "flap-system-identification/scripts/train_deployable_wrench_correction_v2.py at main · dAnte-9029/flap-system-identification · GitHub"
+[11]: https://github.com/dAnte-9029/IsaacLab/tree/paper-effective-wrench-comparison/scripts "IsaacLab/scripts at paper-effective-wrench-comparison · dAnte-9029/IsaacLab · GitHub"
+[12]: https://github.com/dAnte-9029/AeroConf_effective_aero/tree/main/sections "AeroConf_effective_aero/sections at main · dAnte-9029/AeroConf_effective_aero · GitHub"

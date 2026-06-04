@@ -1,82 +1,56 @@
 % !TeX root = ../main.tex
-\section{Theory-Guided Neural Residual Model}
+\section{Theory-Guided Residual Analysis and Correction}
 \label{sec:method}
 
-\subsection{Physics-Based Aerodynamic Model and Calibration}
+\subsection{Physics-Based Aerodynamic Prior and Force Alignment}
 \label{subsec:delaurier_calibration}
 
-A physics-based aerodynamic model based on DeLaurier's flapping-wing formulation~\cite{delaurier1993} provides the structured part of the wrench prediction. The model is implemented in IsaacLab and produces the same six-component body-frame force and moment vector as the effective-wrench target in Eq.~\eqref{eq:wrench_vector}. It uses the wing motion, local airdata, body rates, and tail and fuselage terms required by the aerodynamic calculation.
+A physics-based aerodynamic model based on DeLaurier's flapping-wing formulation~\cite{delaurier1993} provides the structured prior used by the correction. The model is implemented in IsaacLab and produces a body-frame force and moment vector in the same CG reference convention as the effective-wrench target in Eq.~\eqref{eq:wrench_vector}. It uses the wing motion, local airdata, body rates, and tail and fuselage terms required by the aerodynamic calculation.
 
-The model is useful because it maps vehicle geometry, wing motion, and flight condition to a physically organized wrench estimate. The formulation relies on strip-theory and quasi-steady assumptions, approximate geometry and aerodynamic parameters, and simplified treatments of wing flexibility, unsteady loading, and tail/body aerodynamics. These approximations make the model incomplete for outdoor free flight. We therefore use the calibrated aerodynamic model as the baseline physical prediction and train a neural residual estimator for the remaining discrepancy.
+The model is useful because it maps vehicle geometry, wing motion, and flight condition to a physically organized wrench estimate. The formulation relies on strip-theory and quasi-steady assumptions, approximate geometry and aerodynamic parameters, and simplified treatments of wing flexibility, unsteady loading, and tail/body aerodynamics. These approximations make the model incomplete for outdoor free flight. We therefore first align the exported prior to the training logs with a low-dimensional wrapper, and then analyze the residual discrepancy left by this aligned prior before defining the correction.
 
-Before residual training, the aerodynamic model is calibrated using training logs only. The calibration is low-dimensional and bounded: it adjusts only the parameters listed below, while leaving the aerodynamic structure fixed. The optimized parameter vector is
+The prior-alignment step used in the present results is a force-only affine wrapper applied to the exported DeLaurier force predictions. It does not reidentify the internal IsaacLab DeLaurier aerodynamic constants. Let $\mathbf{y}^{D0}_{t,\mathcal{F}}$ denote the exported nominal prior force. The aligned prior force is
 \begin{equation}
-\boldsymbol{\psi}
-=
-(s_N,\;s_C,\;\theta_w,\;\eta_{\max},\;e_i,\;C_{D,A},\;s_T,\;\Delta t_{\phi}).
+  \mathbf{y}^{D}_{t,\mathcal{F}}
+  =
+  \mathbf{A}_{D}\mathbf{y}^{D0}_{t,\mathcal{F}}
+  +
+  \mathbf{b}_{D},
 \label{eq:prior_params}
 \end{equation}
-Here $s_N$, $s_C$, and $s_T$ scale wing normal force, wing chordwise force, and tail lift; $\theta_w$ and $\eta_{\max}$ set wing incidence and twist; $e_i$ and $C_{D,A}$ parameterize induced drag and fuselage drag; and $\Delta t_{\phi}$ is the phase delay. After calibration, $\boldsymbol{\psi}$ is fixed and the calibrated model provides the baseline prediction used to define the residual target.
-
-The calibration objective minimizes a weighted discrepancy between the log-derived effective wrench and the physics-based model. With
+where $\mathbf{A}_{D}$ is diagonal and $\mathbf{b}_{D}$ is a force bias. Both are fitted on training logs only by independent least-squares fits for $f_{x,b}$, $f_{y,b}$, and $f_{z,b}$. The fitted values are
 \begin{equation}
-  \mathbf{d}_t(\boldsymbol{\psi})
+\begin{aligned}
+  \mathbf{A}_{D}
   =
-  \mathbf{W}
-  \left[
-    \mathbf{y}_t-\mathbf{y}^{D}_t(\boldsymbol{\psi})
-  \right],
-  \label{eq:prior_calibration_residual}
+  \mathrm{diag}(0.02865,\;0.000673,\;0.00805),\\
+  \mathbf{b}_{D}
+  =
+  [3.048,\;-0.070,\;-8.335]^{\mathsf{T}}\;\mathrm{N}.
+\end{aligned}
+  \label{eq:prior_affine_values}
 \end{equation}
-the calibrated parameters are obtained from
+After this alignment, $\mathbf{A}_{D}$ and $\mathbf{b}_{D}$ are fixed and the aligned prior provides the baseline force prediction used for residual diagnosis and correction. Nominal prior moments are retained only as a comparison baseline; the final moment branch below is treated as effective-moment prediction rather than DeLaurier moment residual correction.
+
+The affine prior alignment minimizes the training-log force discrepancy
 \begin{equation}
-  \begin{aligned}
-  \boldsymbol{\psi}^{\star}
-  &=
-  \arg\min_{\boldsymbol{\psi}\in\Psi}
-  \mathcal{J}(\boldsymbol{\psi}),\\
-  \mathcal{J}(\boldsymbol{\psi})
-  &=
-  \frac{1}{|\mathcal{D}_{\mathrm{train}}|}
+  \min_{\mathbf{A}_{D},\mathbf{b}_{D}}
   \sum_{t\in\mathcal{D}_{\mathrm{train}}}
-  \rho_{\delta}\!\left(\mathbf{d}_t(\boldsymbol{\psi})\right)
-  +
-  \lambda\|\boldsymbol{\psi}-\boldsymbol{\psi}_0\|_2^2 .
-  \end{aligned}
+  \left\|
+    \mathbf{y}_{t,\mathcal{F}}
+    -
+    \mathbf{A}_{D}\mathbf{y}^{D0}_{t,\mathcal{F}}
+    -
+    \mathbf{b}_{D}
+  \right\|_2^2 ,
   \label{eq:prior_calibration_objective}
 \end{equation}
-where $\Psi$ is the bounded physically plausible search region, $\mathbf{W}$ balances the six wrench channels, $\rho_{\delta}(\cdot)$ is an elementwise Huber loss, and the weak regularization term penalizes large deviations from the nominal parameters. This objective can remove systematic scale, offset, efficiency, and phase mismatch, but it does not allow the calibrated model to fit arbitrary sample-level errors.
+with the diagonal structure of $\mathbf{A}_{D}$ preventing cross-channel force mixing. This wrapper can remove gross scale and bias mismatch in the exported prior, but it cannot fit phase-dependent or flight-condition-dependent sample-level errors. Those remaining errors are the subject of the residual analysis and structured correction below.
 
-\subsection{Channel-Aware Residual Learning and Causal Transformer}
-\label{subsec:residual_learning}
+\subsection{Residual Analysis Framework}
+\label{subsec:residual_structure_methods}
 
-The calibrated aerodynamic model is most useful for the force channels, where the
-dominant wing and tail loads are represented explicitly. For the moment channels,
-the same model is more sensitive to center-of-gravity location, moment arms, tail
-modeling, and small label variance. The final hybrid model therefore uses a
-channel-aware output definition. Let
-$\mathcal{F}=\{f_{x,b},f_{y,b},f_{z,b}\}$ and
-$\mathcal{M}=\{m_{x,b},m_{y,b},m_{z,b}\}$. The force prediction is
-\begin{equation}
-  \hat{\mathbf{y}}_{t,\mathcal{F}}
-  =
-  \mathbf{y}^{D}_{t,\mathcal{F}}(\mathbf{z}_t;\boldsymbol{\psi}^{\star})
-  +
-  \hat{\mathbf{r}}_{\theta,t,\mathcal{F}},
-  \label{eq:hybrid_force}
-\end{equation}
-and the moment prediction is
-\begin{equation}
-  \hat{\mathbf{y}}_{t,\mathcal{M}}
-  =
-  \hat{\mathbf{m}}_{\theta,t}.
-  \label{eq:hybrid_moment}
-\end{equation}
-Here $\mathbf{z}_t$ denotes the aerodynamic-model inputs at time $t$,
-$\mathbf{y}^{D}_{t,\mathcal{F}}$ is the calibrated force prediction,
-$\hat{\mathbf{r}}_{\theta,t,\mathcal{F}}$ is the neural force residual, and
-$\hat{\mathbf{m}}_{\theta,t}$ is the direct neural moment prediction. The force
-residual target is
+The aligned model defines the residuals that are used to decide what a real-flight correction should represent. For the force channels, let $\mathcal{F}=\{f_{x,b},f_{y,b},f_{z,b}\}$. The aligned-prior residual is
 \begin{equation}
   \mathbf{r}_{t,\mathcal{F}}
   =
@@ -85,53 +59,57 @@ residual target is
   \mathbf{y}^{D}_{t,\mathcal{F}} .
   \label{eq:force_residual_target}
 \end{equation}
+This signal is not interpreted as an isolated aerodynamic load error. It is the discrepancy between a low-dimensional aerodynamic prior and the log-derived effective force, so it can include wing flexibility, unsteady loading, remaining parameter mismatch, actuator timing, tail/body aerodynamic mismatch, outdoor disturbances, and wrench-label reconstruction error.
 
-The force residual is a combined discrepancy between the calibrated aerodynamic
-model and the real-flight effective wrench. It can arise from wing flexibility,
-unsteady loading, remaining parameter mismatch, actuator timing, tail/body
-aerodynamic mismatch, outdoor disturbances, and wrench-label reconstruction
-error. The neural model therefore learns a correction to the calibrated force
-prediction, while the moment head learns the moment components directly.
-Further analysis identifies which parts of the force correction are repeatable
-with phase, frequency, or flight condition.
+The residual analysis asks whether $\mathbf{r}_{t,\mathcal{F}}$ contains repeatable structure that can be represented by variables available in a simulator or onboard estimator. We therefore examine the aligned-prior residual with respect to wingbeat phase, flight condition, actuator commands, channel excitation, and frequency content. This analysis is used in two ways: it motivates the candidate correction features, and it later evaluates whether the fitted correction removes the repeatable part of the aligned-prior error.
 
-A memoryless MLP is the simplest neural correction, but flapping-wing loads depend strongly on recent wing motion, actuator response, and vehicle motion. We therefore use causal temporal models that predict the correction outputs at time $t$ from current and historical onboard-measurable variables. Among the tested recurrent, convolutional, and attention-based backbones, the Transformer gave the best validation accuracy and is used as the main estimator:
-\begin{equation}
-  \left[
-  \hat{\mathbf{r}}_{\theta,t,\mathcal{F}},
-  \hat{\mathbf{m}}_{\theta,t}
-  \right]
-  =
-  f_{\theta}
-  \left(
-    \mathbf{s}_{t-H+1:t},
-    \mathbf{c}_{t}
-  \right),
-  \label{eq:residual_causal_model}
-\end{equation}
-where $\mathbf{s}_{t-H+1:t}$ is a causal history window and $\mathbf{c}_t$ contains current-time features. Consistent with the input organization in Sec.~\ref{subsec:canonical_samples}, the history contains phase, flapping, actuation, and airdata variables, while the current features contain state and air-relative quantities. Acceleration channels and past wrench targets are excluded, so the estimator uses only variables that are measurable onboard before the target wrench is reconstructed.
-
-\subsection{Residual Signals for Analysis}
-\label{subsec:residual_structure_methods}
-
-For the force channels, the residual formulation also defines the quantities used
-for post-training analysis:
+Once a correction $\Delta\hat{\mathbf{f}}_{\theta}$ is fitted, the remaining force residual is
 \begin{equation}
   \begin{aligned}
-  \mathbf{r}_{t,\mathcal{F}}
-  &=
-  \mathbf{y}_{t,\mathcal{F}} - \mathbf{y}^{D}_{t,\mathcal{F}},\\
   \mathbf{e}_{t,\mathcal{F}}
   &=
   \mathbf{y}_{t,\mathcal{F}}
   - \mathbf{y}^{D}_{t,\mathcal{F}}
-  - \hat{\mathbf{r}}_{\theta,t,\mathcal{F}} .
+  - \Delta\hat{\mathbf{f}}_{\theta}(\mathbf{x}_t) .
   \end{aligned}
   \label{eq:residual_triplet}
 \end{equation}
-Here $\mathbf{r}_{t,\mathcal{F}}$ is the force residual left by the calibrated
-aerodynamic model, $\hat{\mathbf{r}}_{\theta,t,\mathcal{F}}$ is the neural
-force-residual prediction, and $\mathbf{e}_{t,\mathcal{F}}$ is the remaining force residual
-after correction. These three signals are later compared across wingbeat phase,
-flight condition, and frequency band to determine whether the force residual
-contains repeatable structure.
+The triplet $\{\mathbf{r}_{t,\mathcal{F}}, \Delta\hat{\mathbf{f}}_{\theta}, \mathbf{e}_{t,\mathcal{F}}\}$ is compared across phase, condition, and frequency band in Sec.~\ref{sec:results}. The correction is considered useful for simulation modeling only to the extent that it reduces repeatable residual structure while remaining a function of deployable state, actuation, and airdata variables.
+
+\subsection{Channel-Aware Structured Correction}
+\label{subsec:residual_learning}
+
+The correction model is built from the residual analysis rather than introduced as an unrestricted black-box replacement. The feature vector $\mathbf{x}_t$ uses only quantities that can also be produced inside a simulator or by an onboard estimator: corrected wingbeat phase and its first two harmonics, airspeed, dynamic pressure, angle of attack, a sideslip proxy, flapping frequency, body rates, tail-surface commands, and selected interactions among these terms. The selected force correction is a ridge-regularized linear map in this feature basis. Candidate ridge parameters are $\alpha\in\{0,10^{-3},10^{-2},10^{-1},1,10,100,1000\}$, with feature families and $\alpha$ selected by validation-log force-mean RMSE. The selected force branch uses the phase-structured-plus-rates-and-controls feature family, additive residual form, and $\alpha=10$. Features are filled by training-set medians, standardized by training-set means and standard deviations, and then kept fixed for validation and test inference. This keeps the correction deployable and inspectable as a map from simulator-available state, actuation, airdata, and wingbeat variables to the residual force left by the affine-aligned low-dimensional prior.
+
+The aligned aerodynamic model is most useful for the force channels, where the dominant wing and tail loads are represented explicitly. For the moment channels, the same model is more sensitive to center-of-gravity location, moment arms, tail modeling, angular-acceleration smoothing, and label variance. The final correction therefore uses a channel-aware output definition. Let $\mathcal{M}=\{m_{x,b},m_{y,b},m_{z,b}\}$. The force prediction is
+\begin{equation}
+  \hat{\mathbf{y}}_{t,\mathcal{F}}
+  =
+  \mathbf{y}^{D}_{t,\mathcal{F}}(\mathbf{z}_t)
+  +
+  \Delta\hat{\mathbf{f}}_{\theta}(\mathbf{x}_t),
+  \label{eq:hybrid_force}
+\end{equation}
+and the moment prediction is
+\begin{equation}
+  \hat{\mathbf{y}}_{t,\mathcal{M}}
+  =
+  \hat{\mathbf{m}}_{\theta}(\mathbf{x}_t).
+  \label{eq:hybrid_moment}
+\end{equation}
+Here $\mathbf{z}_t$ denotes the aerodynamic-model inputs at time $t$, $\mathbf{y}^{D}_{t,\mathcal{F}}$ is the aligned force-prior prediction, $\Delta\hat{\mathbf{f}}_{\theta}$ is the fitted force correction, and $\hat{\mathbf{m}}_{\theta}$ is the effective-moment prediction. The force branch therefore corrects the prior residual identified above, while the moment branch is treated as a separate effective-wrench prediction problem.
+
+For moments, the correction uses a practical effective rotational-wrench head. The design reflects the fact that a full effective moment can be produced partly by a corrected net force acting at an effective arm and partly by rotational effects that cannot be represented by a single force arm. The implementation therefore decomposes the moment estimate into a force-arm-like term plus a free structured term,
+\begin{equation}
+  \hat{\mathbf{m}}_{\theta}(\mathbf{x}_t)
+  =
+  \hat{\mathbf{r}}_{\theta}^{B}(\mathbf{x}_t)
+  \times
+  \hat{\mathbf{F}}_{\theta}^{B}(\mathbf{x}_t)
+  +
+  \hat{\boldsymbol{\tau}}_{\theta,\mathrm{free}}(\mathbf{x}_t),
+  \label{eq:moment_structured_head}
+\end{equation}
+where $\hat{\mathbf{r}}_{\theta}^{B}$ is a fitted effective arm and $\hat{\boldsymbol{\tau}}_{\theta,\mathrm{free}}$ captures remaining structured moment terms. Both terms use the same validation-selected phase-structured-plus-rates-and-controls feature family; the selected moment ridge parameter is $\alpha=1000$. The mean fitted effective-arm magnitude on the selected model is about $0.104~\mathrm{m}$, with a $95$th percentile of about $0.222~\mathrm{m}$. This head should not be interpreted as a direct decomposition of measured aerodynamic moments into physical component loads. It is an effective-moment predictor used to report the rotational part of the log-derived wrench under the measured inertia and smoothed angular-acceleration label definition.
+
+Consistent with the input organization in Sec.~\ref{subsec:canonical_samples}, acceleration channels and past wrench targets are excluded from $\mathbf{x}_t$. Acceleration is used to reconstruct the labels, not to predict them. This prevents the correction from reading the same signal used to define the supervised target.
